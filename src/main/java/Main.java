@@ -7,7 +7,7 @@ public class Main {
         if (botToken == null) {
             throw new IllegalStateException("BOT_TOKEN не задан");
         }
-        final String weatherApiKey = System.getenv("WEATHER_API");
+        final String weatherApiKey = System.getenv("WEATHER_API_KEY");
         if (weatherApiKey == null) {
             throw new IllegalStateException("WEATHER_API не задан");
         }

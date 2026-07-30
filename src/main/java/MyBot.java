@@ -9,10 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private TelegramClient telegramClient; // инструмент для отправки
@@ -21,7 +18,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private Map<Long, Integer> numberToGuess = new HashMap<>();
     private Map<Long, Integer> rpsHumanGameStats = new HashMap<>();
     private Map<Long, Integer> rpsComputerGameStats = new HashMap<>();
-    private Map<Long, ArrayList<String>> toDoList = new HashMap<>();
+    private Map<Long, List<String>> toDoList = new HashMap<>();
     private final String weatherApiKey;
     private final Random rand = new Random();
 
@@ -29,6 +26,28 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     public MyBot(String botToken, String weatherApiKey) {
         this.telegramClient = new OkHttpTelegramClient(botToken);
         this.weatherApiKey = weatherApiKey;
+    }
+
+    private void addTask(Long userId, String text) {
+        toDoList.computeIfAbsent(userId, k -> new ArrayList<>()).add(text);
+    }
+
+    private List<String> getTasks(Long userId) {
+        return new ArrayList<>(toDoList.getOrDefault(userId, List.of()));
+    }
+
+    private boolean removeTask(Long userId, int index) {
+        if (toDoList.containsKey(userId)) {
+            if (index > toDoList.get(userId).size() - 1 || index < 0) {
+                return false;
+            } else {
+                List<String> existing = toDoList.get(userId);
+                existing.remove(index);
+                return true;
+            }
+        } else {
+            return false;
+        }
     }
 
     @Override
@@ -43,27 +62,56 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
             String currentUserName = usersNames.getOrDefault(chatId, "");
             int currentUserWins = rpsHumanGameStats.getOrDefault(chatId, 0);
             int currentUserloses = rpsComputerGameStats.getOrDefault(chatId, 0);
-            ArrayList<String> tasks = toDoList.get(chatId);
-//             3. Создаем "письмо" (куда отправить, что написать)
             SendMessage message = new SendMessage(String.valueOf(chatId), "");
 
             if (currentState.equals("idle")) {
-                if (text.startsWith("/add")){
-//                    toDoList.put(chatId,);
-                }
-                if (text.startsWith("/remind ")){
-                    String[] parts = text.split(" ", 3);
-                    message.setText("Я принял твое напоминание! Напомню через " + parts[1] + " секунд.");
-                    new Thread(() -> {
-                        try{
-                            Thread.sleep(Integer.parseInt(parts[1])*1000);
-                            SendMessage remind = new SendMessage(String.valueOf(chatId), parts[2]);
-                            telegramClient.execute(remind);
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                if (text.startsWith("/add")) {
+                    String[] parts = text.split(" ", 2);
+                    if (parts.length < 2) {
+                        message.setText("Напиши задачу после команды (/add твоя задача)");
+                    } else {
+                        addTask(chatId, parts[1]);
+                        message.setText("Задача добавлена");
+                    }
+                } else if (text.startsWith("/done ")) {
+                    String[] parts = text.split(" ", 2);
+                    try {
+                        int index = Integer.parseInt(parts[1]) - 1;
+                        if (removeTask(chatId, index)) {
+                            message.setText("Задача успешно удалена.");
+                        } else {
+                            message.setText("Мне не удалось удалить эту задачу. Попробуй еще раз.");
                         }
-                    }).start();
-                }else {
+                    } catch (NumberFormatException nfe) {
+                        message.setText("Введи номер задачи цифрой. ");
+                    }
+
+                } else if (text.startsWith("/remind ")) {
+                    String[] parts = text.split(" ", 3);
+                    if (parts.length < 3) {
+                        message.setText("Проверь написание команды. ");
+                    } else {
+                        try {
+                            int millis = Integer.parseInt(parts[1]) * 1000;
+                            if (millis < 0) {
+                                message.setText("Укажи положительное время. ");
+                            } else {
+                                message.setText("Я принял твое напоминание! Напомню через " + parts[1] + " секунд.");
+                                new Thread(() -> {
+                                    try {
+                                        Thread.sleep(millis);
+                                        SendMessage remind = new SendMessage(String.valueOf(chatId), parts[2]);
+                                        telegramClient.execute(remind);
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }).start();
+                            }
+                        } catch (NumberFormatException e) {
+                            message.setText("Проверь написание команды. ");
+                        }
+                    }
+                } else {
                     switch (text) {
                         case "/start" -> message.setText("Привет, я родился!");
                         case "/todo" -> {
@@ -71,7 +119,6 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                                     "/add  — добавить дело в список.\n" +
                                     "/list — показать все мои дела.\n" +
                                     "/clear — очистить список.");
-                            states.put(chatId, "waiting_for_todo_command");
                         }
                         case "/help" -> message.setText("Я умею знакомиться. Напиши 'Кто ты?'\n" +
                                 "А так же загадывать числа. Напиши '/guess'");
@@ -99,26 +146,26 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                             message.setText("Задай мне вопрос, на который можно ответить Да или Нет, и я загляну в будущее...");
                         }
                         case "/quote" -> {
-                            try{
+                            try {
                                 String url = "https://api.animechan.io/v1/quotes/random";
                                 OkHttpClient client = new OkHttpClient();
                                 Request request = new Request.Builder().url(url).build();
                                 Response response = client.newCall(request).execute();
                                 String jsonResponse = response.body().string();
                                 if (response.code() == 200) {
-                                JSONObject obj = new JSONObject(jsonResponse);
+                                    JSONObject obj = new JSONObject(jsonResponse);
 
-                                JSONObject data = obj.getJSONObject("data");
-                                JSONObject anime = data.getJSONObject("anime");
-                                JSONObject character = data.getJSONObject("character");
+                                    JSONObject data = obj.getJSONObject("data");
+                                    JSONObject anime = data.getJSONObject("anime");
+                                    JSONObject character = data.getJSONObject("character");
 
-                                String name = anime.getString("name");
-                                String altName = anime.getString("altName");
-                                String charName = character.getString("name");
+                                    String name = anime.getString("name");
+                                    String altName = anime.getString("altName");
+                                    String charName = character.getString("name");
 
-                                String quote = data.getString("content");
-                                message.setText("Цитата: " + quote + "\nНазвание аниме: " + name + "\nИмя персонажа: " + charName);}
-                                else{
+                                    String quote = data.getString("content");
+                                    message.setText("Цитата: " + quote + "\nНазвание аниме: " + name + "\nИмя персонажа: " + charName);
+                                } else {
                                     message.setText("Попробуй позже.");
                                 }
                             } catch (Exception e) {
@@ -147,6 +194,24 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                         }
                         case "/stats" -> {
                             message.setText("Твои победы: " + currentUserWins + "| Мои победы: " + currentUserloses);
+                        }
+                        case "/list" -> {
+                            List<String> currentTasks = getTasks(chatId);
+                            StringBuilder currentTasksOutput = new StringBuilder();
+                            if (currentTasks.isEmpty()) {
+                                message.setText("Задачи отсутствуют ");
+                            } else {
+                                currentTasksOutput.append("Текущие задачи: \n");
+                                for (int i = 0; i < currentTasks.size(); i++) {
+                                    currentTasksOutput.append(i + 1).append(". ").append(currentTasks.get(i)).append("\n");
+
+                                }
+                                message.setText(currentTasksOutput.toString());
+                            }
+                        }
+                        case "/clear" -> {
+                            toDoList.remove(chatId);
+                            message.setText("Задачи удаленны");
                         }
                         default -> message.setText("Я не понимаю. Напиши /help");
                     }
@@ -241,6 +306,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                 } catch (NumberFormatException e) {
                     message.setText("Пожалуйста, введи только цифру хода (1, 2 или 3)!");
                 }
+            } else if (currentState.equals("waiting_for_weather_city")) {
+
                 String url = "https://api.openweathermap.org/data/2.5/weather?q=" + text + "&appid=" + weatherApiKey + "&units=metric";
                 System.out.println("Собранный URL: " + url);
                 try {
@@ -270,6 +337,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                     throw new RuntimeException(e);
                 }
 
+
             } else if (currentState.equals("waiting_for_question")) {
                 String[] answers = {"Бесспорно", "Даже не думай", "Мне кажется — да", "Пока не яснo", "Мой ответ — нет"};
                 message.setText(answers[rand.nextInt(0, answers.length)]);
@@ -278,7 +346,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
             // 4. Оборачиваем отправку в защиту от ошибок сети
             try {
                 telegramClient.execute(message); // Почтальон, отправляй!
-            } catch (Exception e) {
+            } catch (
+                    Exception e) {
                 e.printStackTrace(); // Если ошибка - выведет в консоль
             }
         }
