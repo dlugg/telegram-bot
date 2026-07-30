@@ -31,8 +31,10 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         commands.put("/help", new HelpCommand());
         commands.put("/todo", new ToDoCommand());
         commands.put("/list", new ListCommand(taskService));
+        commands.put("/add", new AddCommand(taskService));
+        commands.put("/done", new DoneCommand(taskService));
+        commands.put("/remind", new RemindCommand(telegramClient));
     }
-
 
 
     @Override
@@ -59,133 +61,86 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                     }
                     message.setText(cmd.execute(chatId, args));
                 } else {
-                    if (text.startsWith("/add")) {
-                        String[] partsAdd = text.split(" ", 2);
-                        if (partsAdd.length < 2) {
-                            message.setText("Напиши задачу после команды (/add твоя задача)");
-                        } else {
-                            taskService.addTask(chatId, partsAdd[1]);
-                            message.setText("Задача добавлена");
-                        }
-                    } else if (text.startsWith("/done ")) {
-                        String[] partsDone = text.split(" ", 2);
-                        try {
-                            int index = Integer.parseInt(partsDone[1]) - 1;
-                            if (taskService.removeTask(chatId, index)) {
-                                message.setText("Задача успешно удалена.");
-                            } else {
-                                message.setText("Мне не удалось удалить эту задачу. Попробуй еще раз.");
-                            }
-                        } catch (NumberFormatException nfe) {
-                            message.setText("Введи номер задачи цифрой. ");
-                        }
 
-                    } else if (text.startsWith("/remind ")) {
-                        String[] partsRemind = text.split(" ", 3);
-                        if (partsRemind.length < 3) {
-                            message.setText("Проверь написание команды. ");
-                        } else {
+                    switch (text) {
+                        case "/guess" -> {
+                            numberToGuess.put(chatId, rand.nextInt(1, 10 + 1));
+                            states.put(chatId, "waiting_for_guess");
+                            message.setText("Я загадал число от 1 до 10. Отгадывай!");
+                        }
+                        case "/btc" -> {
                             try {
-                                int millis = Integer.parseInt(partsRemind[1]) * 1000;
-                                if (millis < 0) {
-                                    message.setText("Укажи положительное время. ");
-                                } else {
-                                    message.setText("Я принял твое напоминание! Напомню через " + partsRemind[1] + " секунд.");
-                                    new Thread(() -> {
-                                        try {
-                                            Thread.sleep(millis);
-                                            SendMessage remind = new SendMessage(String.valueOf(chatId), partsRemind[2]);
-                                            telegramClient.execute(remind);
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                    }).start();
-                                }
-                            } catch (NumberFormatException e) {
-                                message.setText("Проверь написание команды. ");
+                                String url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT";
+                                OkHttpClient client = new OkHttpClient();
+                                Request request = new Request.Builder().url(url).build();
+                                Response response = client.newCall(request).execute();
+                                String jsonResponse = response.body().string();
+                                JSONObject obj = new JSONObject(jsonResponse);
+                                double btcPrice = obj.getDouble("price");
+                                message.setText("Текущая цена BTC/USD составляет - " + btcPrice);
+                            } catch (IOException e) {
+                                e.printStackTrace();
                             }
                         }
-                    } else {
-                        switch (text) {
-                            case "/guess" -> {
-                                numberToGuess.put(chatId, rand.nextInt(1, 10 + 1));
-                                states.put(chatId, "waiting_for_guess");
-                                message.setText("Я загадал число от 1 до 10. Отгадывай!");
-                            }
-                            case "/btc" -> {
-                                try {
-                                    String url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT";
-                                    OkHttpClient client = new OkHttpClient();
-                                    Request request = new Request.Builder().url(url).build();
-                                    Response response = client.newCall(request).execute();
-                                    String jsonResponse = response.body().string();
+                        case "/ball" -> {
+                            states.put(chatId, "waiting_for_question");
+                            message.setText("Задай мне вопрос, на который можно ответить Да или Нет, и я загляну в будущее...");
+                        }
+                        case "/quote" -> {
+                            try {
+                                String url = "https://api.animechan.io/v1/quotes/random";
+                                OkHttpClient client = new OkHttpClient();
+                                Request request = new Request.Builder().url(url).build();
+                                Response response = client.newCall(request).execute();
+                                String jsonResponse = response.body().string();
+                                if (response.code() == 200) {
                                     JSONObject obj = new JSONObject(jsonResponse);
-                                    double btcPrice = obj.getDouble("price");
-                                    message.setText("Текущая цена BTC/USD составляет - " + btcPrice);
-                                } catch (IOException e) {
-                                    e.printStackTrace();
+
+                                    JSONObject data = obj.getJSONObject("data");
+                                    JSONObject anime = data.getJSONObject("anime");
+                                    JSONObject character = data.getJSONObject("character");
+
+                                    String name = anime.getString("name");
+                                    String altName = anime.getString("altName");
+                                    String charName = character.getString("name");
+
+                                    String quote = data.getString("content");
+                                    message.setText("Цитата: " + quote + "\nНазвание аниме: " + name + "\nИмя персонажа: " + charName);
+                                } else {
+                                    message.setText("Попробуй позже.");
                                 }
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
                             }
-                            case "/ball" -> {
-                                states.put(chatId, "waiting_for_question");
-                                message.setText("Задай мне вопрос, на который можно ответить Да или Нет, и я загляну в будущее...");
-                            }
-                            case "/quote" -> {
-                                try {
-                                    String url = "https://api.animechan.io/v1/quotes/random";
-                                    OkHttpClient client = new OkHttpClient();
-                                    Request request = new Request.Builder().url(url).build();
-                                    Response response = client.newCall(request).execute();
-                                    String jsonResponse = response.body().string();
-                                    if (response.code() == 200) {
-                                        JSONObject obj = new JSONObject(jsonResponse);
-
-                                        JSONObject data = obj.getJSONObject("data");
-                                        JSONObject anime = data.getJSONObject("anime");
-                                        JSONObject character = data.getJSONObject("character");
-
-                                        String name = anime.getString("name");
-                                        String altName = anime.getString("altName");
-                                        String charName = character.getString("name");
-
-                                        String quote = data.getString("content");
-                                        message.setText("Цитата: " + quote + "\nНазвание аниме: " + name + "\nИмя персонажа: " + charName);
-                                    } else {
-                                        message.setText("Попробуй позже.");
-                                    }
-                                } catch (Exception e) {
-                                    throw new RuntimeException(e);
-                                }
-                            }
-                            case "Кто ты?" -> {
-                                message.setText("Я просто глупый робот. А как тебя зовут, человек?");
-                                states.put(chatId, "waiting_for_name");
-                            }
-                            case "/weather" -> {
-                                states.put(chatId, "waiting_for_weather_city");
-                                message.setText("Напиши название города на английском (например, London или Moscow):");
-                            }
-                            case "/reverse" -> {
-                                states.put(chatId, "waiting_for_reverse");
-                                message.setText("Напиши мне любое слово или фразу, и я разверну ее задом наперед!");
-                            }
-                            case "/rps" -> {
-                                states.put(chatId, "waiting_for_human_choice");
-                                message.setText("Давай сыграем в Камень, Ножницы, Бумага. Выбери свой ход (1-3): \n" +
-                                        "1) Камень\n" +
-                                        "2) Ножницы\n" +
-                                        "3) Бумага\n\n" +
-                                        "Проверить статистику можно командой /stats");
-                            }
-                            case "/stats" -> {
-                                message.setText("Твои победы: " + currentUserWins + "| Мои победы: " + currentUserloses);
-                            }
-                            case "/clear" -> {
-                                taskService.clearAllTasks(chatId);
-                                message.setText("Задачи удаленны");
-                            }
-                            default -> message.setText("Я не понимаю. Напиши /help");
                         }
+                        case "Кто ты?" -> {
+                            message.setText("Я просто глупый робот. А как тебя зовут, человек?");
+                            states.put(chatId, "waiting_for_name");
+                        }
+                        case "/weather" -> {
+                            states.put(chatId, "waiting_for_weather_city");
+                            message.setText("Напиши название города на английском (например, London или Moscow):");
+                        }
+                        case "/reverse" -> {
+                            states.put(chatId, "waiting_for_reverse");
+                            message.setText("Напиши мне любое слово или фразу, и я разверну ее задом наперед!");
+                        }
+                        case "/rps" -> {
+                            states.put(chatId, "waiting_for_human_choice");
+                            message.setText("Давай сыграем в Камень, Ножницы, Бумага. Выбери свой ход (1-3): \n" +
+                                    "1) Камень\n" +
+                                    "2) Ножницы\n" +
+                                    "3) Бумага\n\n" +
+                                    "Проверить статистику можно командой /stats");
+                        }
+                        case "/stats" -> {
+                            message.setText("Твои победы: " + currentUserWins + "| Мои победы: " + currentUserloses);
+                        }
+                        case "/clear" -> {
+                            taskService.clearAllTasks(chatId);
+                            message.setText("Задачи удаленны");
+                        }
+                        default -> message.setText("Я не понимаю. Напиши /help");
                     }
                 }
             } else if (currentState.equals("waiting_for_name")) {

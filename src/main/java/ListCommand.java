@@ -2,7 +2,7 @@ import java.util.List;
 
 public class ListCommand implements Command {
 private final TaskService taskService;
-    ListCommand(TaskService taskService){
+    public ListCommand(TaskService taskService){
         this.taskService= taskService;
     }
     @Override
