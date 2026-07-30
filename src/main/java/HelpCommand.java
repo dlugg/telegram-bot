@@ -1,7 +1,7 @@
 public class HelpCommand implements Command {
 
     @Override
-    public String execute() {
+    public String execute(long chatId, String args) {
         return """
                 Что я умею:
                 

@@ -1,3 +1,4 @@
 public interface Command{
-    String execute();
+    String execute(long chatId, String args);
+
 }

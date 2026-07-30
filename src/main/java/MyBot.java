@@ -18,7 +18,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private Map<Long, Integer> numberToGuess = new HashMap<>();
     private Map<Long, Integer> rpsHumanGameStats = new HashMap<>();
     private Map<Long, Integer> rpsComputerGameStats = new HashMap<>();
-    private Map<Long, List<String>> toDoList = new HashMap<>();
+    private final TaskService taskService = new TaskService();
     private final String weatherApiKey;
     private final Random rand = new Random();
     private final Map<String, Command> commands = new HashMap<>();
@@ -30,29 +30,10 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         commands.put("/start", new StartCommand());
         commands.put("/help", new HelpCommand());
         commands.put("/todo", new ToDoCommand());
+        commands.put("/list", new ListCommand(taskService));
     }
 
-    private void addTask(Long userId, String text) {
-        toDoList.computeIfAbsent(userId, k -> new ArrayList<>()).add(text);
-    }
 
-    private List<String> getTasks(Long userId) {
-        return new ArrayList<>(toDoList.getOrDefault(userId, List.of()));
-    }
-
-    private boolean removeTask(Long userId, int index) {
-        if (toDoList.containsKey(userId)) {
-            if (index > toDoList.get(userId).size() - 1 || index < 0) {
-                return false;
-            } else {
-                List<String> existing = toDoList.get(userId);
-                existing.remove(index);
-                return true;
-            }
-        } else {
-            return false;
-        }
-    }
 
     @Override
     public void consume(Update update) {
@@ -69,23 +50,28 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
             SendMessage message = new SendMessage(String.valueOf(chatId), "");
 
             if (currentState.equals("idle")) {
-                Command cmd = commands.get(text);
+                String[] parts = text.split(" ", 2);
+                Command cmd = commands.get(parts[0]);
+                String args = "";
                 if (cmd != null) {
-                    message.setText(cmd.execute());
+                    if (parts.length > 1) {
+                        args = parts[1];
+                    }
+                    message.setText(cmd.execute(chatId, args));
                 } else {
                     if (text.startsWith("/add")) {
-                        String[] parts = text.split(" ", 2);
-                        if (parts.length < 2) {
+                        String[] partsAdd = text.split(" ", 2);
+                        if (partsAdd.length < 2) {
                             message.setText("Напиши задачу после команды (/add твоя задача)");
                         } else {
-                            addTask(chatId, parts[1]);
+                            taskService.addTask(chatId, partsAdd[1]);
                             message.setText("Задача добавлена");
                         }
                     } else if (text.startsWith("/done ")) {
-                        String[] parts = text.split(" ", 2);
+                        String[] partsDone = text.split(" ", 2);
                         try {
-                            int index = Integer.parseInt(parts[1]) - 1;
-                            if (removeTask(chatId, index)) {
+                            int index = Integer.parseInt(partsDone[1]) - 1;
+                            if (taskService.removeTask(chatId, index)) {
                                 message.setText("Задача успешно удалена.");
                             } else {
                                 message.setText("Мне не удалось удалить эту задачу. Попробуй еще раз.");
@@ -95,20 +81,20 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                         }
 
                     } else if (text.startsWith("/remind ")) {
-                        String[] parts = text.split(" ", 3);
-                        if (parts.length < 3) {
+                        String[] partsRemind = text.split(" ", 3);
+                        if (partsRemind.length < 3) {
                             message.setText("Проверь написание команды. ");
                         } else {
                             try {
-                                int millis = Integer.parseInt(parts[1]) * 1000;
+                                int millis = Integer.parseInt(partsRemind[1]) * 1000;
                                 if (millis < 0) {
                                     message.setText("Укажи положительное время. ");
                                 } else {
-                                    message.setText("Я принял твое напоминание! Напомню через " + parts[1] + " секунд.");
+                                    message.setText("Я принял твое напоминание! Напомню через " + partsRemind[1] + " секунд.");
                                     new Thread(() -> {
                                         try {
                                             Thread.sleep(millis);
-                                            SendMessage remind = new SendMessage(String.valueOf(chatId), parts[2]);
+                                            SendMessage remind = new SendMessage(String.valueOf(chatId), partsRemind[2]);
                                             telegramClient.execute(remind);
                                         } catch (Exception e) {
                                             e.printStackTrace();
@@ -194,22 +180,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                             case "/stats" -> {
                                 message.setText("Твои победы: " + currentUserWins + "| Мои победы: " + currentUserloses);
                             }
-                            case "/list" -> {
-                                List<String> currentTasks = getTasks(chatId);
-                                StringBuilder currentTasksOutput = new StringBuilder();
-                                if (currentTasks.isEmpty()) {
-                                    message.setText("Задачи отсутствуют ");
-                                } else {
-                                    currentTasksOutput.append("Текущие задачи: \n");
-                                    for (int i = 0; i < currentTasks.size(); i++) {
-                                        currentTasksOutput.append(i + 1).append(". ").append(currentTasks.get(i)).append("\n");
-
-                                    }
-                                    message.setText(currentTasksOutput.toString());
-                                }
-                            }
                             case "/clear" -> {
-                                toDoList.remove(chatId);
+                                taskService.clearAllTasks(chatId);
                                 message.setText("Задачи удаленны");
                             }
                             default -> message.setText("Я не понимаю. Напиши /help");
@@ -353,5 +325,4 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         }
     }
 }
-
 
