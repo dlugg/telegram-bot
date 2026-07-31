@@ -23,7 +23,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private final String weatherApiKey;
     private final Random rand = new Random();
     private final Map<String, Command> commands = new HashMap<>();
-    OkHttpClient client = new OkHttpClient();
+    private final OkHttpClient client = new OkHttpClient();
 
     // Конструктор: при создании бота мы передаем ему токен
     public MyBot(String botToken, String weatherApiKey) {
@@ -36,6 +36,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         commands.put("/add", new AddCommand(taskService));
         commands.put("/done", new DoneCommand(taskService));
         commands.put("/remind", new RemindCommand(telegramClient));
+        commands.put("/btc", new BtcCommand(client));
+        commands.put("/quote", new QuoteCommand(client));
     }
 
 
@@ -70,47 +72,9 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                             states.put(chatId, State.WAITING_FOR_GUESS);
                             message.setText("Я загадал число от 1 до 10. Отгадывай!");
                         }
-                        case "/btc" -> {
-                            String url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT";
-                            Request request = new Request.Builder().url(url).build();
-                            try (Response response = client.newCall(request).execute()) {
-                                String jsonResponse = response.body().string();
-                                JSONObject obj = new JSONObject(jsonResponse);
-                                double btcPrice = obj.getDouble("price");
-                                message.setText("Текущая цена BTC/USD составляет - " + btcPrice);
-                            } catch (IOException | JSONException e) {
-                                e.printStackTrace();
-                                message.setText("Мне не удалось достать курс BTC сейчас. Попробуй позже.");
-                            }
-                        }
                         case "/ball" -> {
                             states.put(chatId, State.WAITING_FOR_QUESTION);
                             message.setText("Задай мне вопрос, на который можно ответить Да или Нет, и я загляну в будущее...");
-                        }
-                        case "/quote" -> {
-                            String url = "https://api.animechan.io/v1/quotes/random";
-                            Request request = new Request.Builder().url(url).build();
-                            try (Response response = client.newCall(request).execute()){
-                                String jsonResponse = response.body().string();
-                                if (response.code() == 200) {
-                                    JSONObject obj = new JSONObject(jsonResponse);
-
-                                    JSONObject data = obj.getJSONObject("data");
-                                    JSONObject anime = data.getJSONObject("anime");
-                                    JSONObject character = data.getJSONObject("character");
-
-                                    String name = anime.getString("name");
-                                    String charName = character.getString("name");
-
-                                    String quote = data.getString("content");
-                                    message.setText("Цитата: " + quote + "\nНазвание аниме: " + name + "\nИмя персонажа: " + charName);
-                                } else {
-                                    message.setText("Что-то пошло не так... Попробуй позже.");
-                                }
-                            } catch (IOException | JSONException e) {
-                                e.printStackTrace();
-                                message.setText("Что-то пошло не так... Попробуй позже.");
-                            }
                         }
                         case "Кто ты?" -> {
                             message.setText("Я просто глупый робот. А как тебя зовут, человек?");
