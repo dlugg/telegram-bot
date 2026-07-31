@@ -14,7 +14,7 @@ import java.util.*;
 
 public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private TelegramClient telegramClient; // инструмент для отправки
-    private Map<Long, String> states = new HashMap<>();        // тут мы сохраним имя юзера
+    private Map<Long, State> states = new HashMap<>();        // тут мы сохраним имя юзера
     private Map<Long, String> usersNames = new HashMap<>();
     private Map<Long, Integer> numberToGuess = new HashMap<>();
     private Map<Long, Integer> rpsHumanGameStats = new HashMap<>();
@@ -47,13 +47,13 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
 
             // 2. Вытаскиваем ID чата (чтобы бот знал, куда отвечать)
             long chatId = update.getMessage().getChatId();
-            String currentState = states.getOrDefault(chatId, "idle");
+            State currentState = states.getOrDefault(chatId, State.IDLE);
             String currentUserName = usersNames.getOrDefault(chatId, "");
             int currentUserWins = rpsHumanGameStats.getOrDefault(chatId, 0);
             int currentUserloses = rpsComputerGameStats.getOrDefault(chatId, 0);
             SendMessage message = new SendMessage(String.valueOf(chatId), "");
 
-            if (currentState.equals("idle")) {
+            if (currentState == State.IDLE) {
                 String[] parts = text.split(" ", 2);
                 Command cmd = commands.get(parts[0]);
                 String args = "";
@@ -67,7 +67,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                     switch (text) {
                         case "/guess" -> {
                             numberToGuess.put(chatId, rand.nextInt(1, 10 + 1));
-                            states.put(chatId, "waiting_for_guess");
+                            states.put(chatId, State.WAITING_FOR_GUESS);
                             message.setText("Я загадал число от 1 до 10. Отгадывай!");
                         }
                         case "/btc" -> {
@@ -84,7 +84,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                             }
                         }
                         case "/ball" -> {
-                            states.put(chatId, "waiting_for_question");
+                            states.put(chatId, State.WAITING_FOR_QUESTION);
                             message.setText("Задай мне вопрос, на который можно ответить Да или Нет, и я загляну в будущее...");
                         }
                         case "/quote" -> {
@@ -114,18 +114,18 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                         }
                         case "Кто ты?" -> {
                             message.setText("Я просто глупый робот. А как тебя зовут, человек?");
-                            states.put(chatId, "waiting_for_name");
+                            states.put(chatId, State.WAITING_FOR_NAME);
                         }
                         case "/weather" -> {
-                            states.put(chatId, "waiting_for_weather_city");
+                            states.put(chatId, State.WAITING_FOR_WEATHER_CITY);
                             message.setText("Напиши название города на английском (например, London или Moscow):");
                         }
                         case "/reverse" -> {
-                            states.put(chatId, "waiting_for_reverse");
+                            states.put(chatId, State.WAITING_FOR_REVERSE);
                             message.setText("Напиши мне любое слово или фразу, и я разверну ее задом наперед!");
                         }
                         case "/rps" -> {
-                            states.put(chatId, "waiting_for_human_choice");
+                            states.put(chatId, State.WAITING_FOR_HUMAN_CHOICE);
                             message.setText("Давай сыграем в Камень, Ножницы, Бумага. Выбери свой ход (1-3): \n" +
                                     "1) Камень\n" +
                                     "2) Ножницы\n" +
@@ -142,18 +142,18 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                         default -> message.setText("Я не понимаю. Напиши /help");
                     }
                 }
-            } else if (currentState.equals("waiting_for_name")) {
+            } else if (currentState == State.WAITING_FOR_NAME) {
                 usersNames.put(chatId, text);
                 message.setText("Тебя действительно зовут " + text + "? Напиши Да или Нет.");
-                states.put(chatId, "waiting_for_confirm");
-            } else if (currentState.equals("waiting_for_confirm")) {
+                states.put(chatId, State.WAITING_FOR_CONFIRM);
+            } else if (currentState == State.WAITING_FOR_CONFIRM) {
                 if (text.equalsIgnoreCase("Да")) {
                     message.setText("Приятно познакомиться, " + currentUserName + "!");
                 } else {
                     message.setText("Извини, я перегрелся. Давай заново.");
                 }
-                states.put(chatId, "idle");
-            } else if (currentState.equals("waiting_for_guess")) {
+                states.put(chatId, State.IDLE);
+            } else if (currentState==State.WAITING_FOR_GUESS) {
                 try {
                     if (numberToGuess.get(chatId) > Integer.parseInt(text)) {
                         message.setText("Мое число больше! ");
@@ -162,12 +162,12 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                     } else {
                         message.setText("Угадал!");
 
-                        states.put(chatId, "idle");
+                        states.put(chatId, State.IDLE);
                     }
                 } catch (NumberFormatException e) {
                     message.setText("Пожалуйста, введи число цифрами!");
                 }
-            } else if (currentState.equals("waiting_for_reverse")) {
+            } else if (currentState== State.WAITING_FOR_REVERSE) {
                 char[] letters = text.toCharArray();
                 for (int i = 0; i < letters.length / 2; i++) {
                     char temp = letters[i];
@@ -176,8 +176,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                 }
                 String reversedText = new String(letters);
                 message.setText(reversedText);
-                states.put(chatId, "idle");
-            } else if (currentState.equals("waiting_for_human_choice")) {
+                states.put(chatId, State.IDLE);
+            } else if (currentState==  State.WAITING_FOR_HUMAN_CHOICE) {
                 try {
                     int humanChoice = Integer.parseInt(text);
                     int computerChoice = rand.nextInt(1, 3 + 1);
@@ -186,53 +186,53 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                             if (computerChoice == 2) {
                                 message.setText("Я выбрал ножницы, Ты победил!");
                                 rpsHumanGameStats.put(chatId, ++currentUserWins);
-                                states.put(chatId, "idle");
+                                states.put(chatId, State.IDLE);
                             } else if (computerChoice == 3) {
                                 message.setText("Я выбрал бумагу, Ты проиграл!");
                                 rpsComputerGameStats.put(chatId, ++currentUserloses);
-                                states.put(chatId, "idle");
+                                states.put(chatId, State.IDLE);
                             } else {
                                 message.setText("Ничья!");
-                                states.put(chatId, "idle");
+                                states.put(chatId, State.IDLE);
                             }
                         }
                         case (2) -> {
                             if (computerChoice == 1) {
                                 message.setText("Я выбрал камень, Ты проиграл!");
                                 rpsComputerGameStats.put(chatId, ++currentUserloses);
-                                states.put(chatId, "idle");
+                                states.put(chatId, State.IDLE);
                             } else if (computerChoice == 3) {
                                 message.setText("Я выбрал бумагу, Ты победил!");
                                 rpsHumanGameStats.put(chatId, ++currentUserWins);
-                                states.put(chatId, "idle");
+                                states.put(chatId, State.IDLE);
                             } else {
                                 message.setText("Ничья!");
-                                states.put(chatId, "idle");
+                                states.put(chatId, State.IDLE);
                             }
                         }
                         case (3) -> {
                             if (computerChoice == 1) {
                                 message.setText("Я выбрал камень, Ты победил!");
                                 rpsHumanGameStats.put(chatId, ++currentUserWins);
-                                states.put(chatId, "idle");
+                                states.put(chatId, State.IDLE);
                             } else if (computerChoice == 2) {
                                 message.setText("Я выбрал ножницы, Ты проиграл!");
                                 rpsComputerGameStats.put(chatId, ++currentUserloses);
-                                states.put(chatId, "idle");
+                                states.put(chatId, State.IDLE);
                             } else {
                                 message.setText("Ничья!");
-                                states.put(chatId, "idle");
+                                states.put(chatId, State.IDLE);
                             }
                         }
                         default -> {
                             message.setText("Я не понимаю введи /help");
-                            states.put(chatId, "idle");
+                            states.put(chatId, State.IDLE);
                         }
                     }
                 } catch (NumberFormatException e) {
                     message.setText("Пожалуйста, введи только цифру хода (1, 2 или 3)!");
                 }
-            } else if (currentState.equals("waiting_for_weather_city")) {
+            } else if (currentState== State.WAITING_FOR_WEATHER_CITY) {
 
                 String url = "https://api.openweathermap.org/data/2.5/weather?q=" + text + "&appid=" + weatherApiKey + "&units=metric";
                 Request request = new Request.Builder().url(url).build();
@@ -259,14 +259,14 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                     e.printStackTrace();
                     message.setText("Что-то пошло не так... Попробуй позже.");
                 } finally {
-                    states.put(chatId, "idle");
+                    states.put(chatId, State.IDLE);
                 }
 
 
-            } else if (currentState.equals("waiting_for_question")) {
+            } else if (currentState== State.WAITING_FOR_QUESTION) {
                 String[] answers = {"Бесспорно", "Даже не думай", "Мне кажется — да", "Пока не яснo", "Мой ответ — нет"};
                 message.setText(answers[rand.nextInt(0, answers.length)]);
-                states.put(chatId, "idle");
+                states.put(chatId, State.IDLE);
             }
             // 4. Оборачиваем отправку в защиту от ошибок сети
             try {
