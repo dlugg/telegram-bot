@@ -1,6 +1,7 @@
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
@@ -22,6 +23,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private final String weatherApiKey;
     private final Random rand = new Random();
     private final Map<String, Command> commands = new HashMap<>();
+    OkHttpClient client = new OkHttpClient();
 
     // Конструктор: при создании бота мы передаем ему токен
     public MyBot(String botToken, String weatherApiKey) {
@@ -69,17 +71,16 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                             message.setText("Я загадал число от 1 до 10. Отгадывай!");
                         }
                         case "/btc" -> {
-                            try {
-                                String url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT";
-                                OkHttpClient client = new OkHttpClient();
-                                Request request = new Request.Builder().url(url).build();
-                                Response response = client.newCall(request).execute();
+                            String url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT";
+                            Request request = new Request.Builder().url(url).build();
+                            try (Response response = client.newCall(request).execute()) {
                                 String jsonResponse = response.body().string();
                                 JSONObject obj = new JSONObject(jsonResponse);
                                 double btcPrice = obj.getDouble("price");
                                 message.setText("Текущая цена BTC/USD составляет - " + btcPrice);
-                            } catch (IOException e) {
+                            } catch (IOException | JSONException e) {
                                 e.printStackTrace();
+                                message.setText("Мне не удалось достать курс BTC сейчас. Попробуй позже.");
                             }
                         }
                         case "/ball" -> {
@@ -87,11 +88,9 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                             message.setText("Задай мне вопрос, на который можно ответить Да или Нет, и я загляну в будущее...");
                         }
                         case "/quote" -> {
-                            try {
-                                String url = "https://api.animechan.io/v1/quotes/random";
-                                OkHttpClient client = new OkHttpClient();
-                                Request request = new Request.Builder().url(url).build();
-                                Response response = client.newCall(request).execute();
+                            String url = "https://api.animechan.io/v1/quotes/random";
+                            Request request = new Request.Builder().url(url).build();
+                            try (Response response = client.newCall(request).execute()){
                                 String jsonResponse = response.body().string();
                                 if (response.code() == 200) {
                                     JSONObject obj = new JSONObject(jsonResponse);
@@ -101,16 +100,16 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                                     JSONObject character = data.getJSONObject("character");
 
                                     String name = anime.getString("name");
-                                    String altName = anime.getString("altName");
                                     String charName = character.getString("name");
 
                                     String quote = data.getString("content");
                                     message.setText("Цитата: " + quote + "\nНазвание аниме: " + name + "\nИмя персонажа: " + charName);
                                 } else {
-                                    message.setText("Попробуй позже.");
+                                    message.setText("Что-то пошло не так... Попробуй позже.");
                                 }
-                            } catch (Exception e) {
-                                throw new RuntimeException(e);
+                            } catch (IOException | JSONException e) {
+                                e.printStackTrace();
+                                message.setText("Что-то пошло не так... Попробуй позже.");
                             }
                         }
                         case "Кто ты?" -> {
@@ -236,11 +235,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
             } else if (currentState.equals("waiting_for_weather_city")) {
 
                 String url = "https://api.openweathermap.org/data/2.5/weather?q=" + text + "&appid=" + weatherApiKey + "&units=metric";
-                System.out.println("Собранный URL: " + url);
-                try {
-                    OkHttpClient client = new OkHttpClient();
-                    Request request = new Request.Builder().url(url).build();
-                    Response response = client.newCall(request).execute();
+                Request request = new Request.Builder().url(url).build();
+                try (Response response = client.newCall(request).execute()){
                     String jsonResponse = response.body().string();
                     if (response.code() == 200) {
                         JSONObject obj = new JSONObject(jsonResponse);
@@ -258,10 +254,12 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                     } else {
                         message.setText("Что-то пошло не так при запросе погоды...");
                     }
-                    System.out.println(jsonResponse);
+
+                } catch (IOException | JSONException e) {
+                    e.printStackTrace();
+                    message.setText("Что-то пошло не так... Попробуй позже.");
+                } finally {
                     states.put(chatId, "idle");
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
                 }
 
 
@@ -272,10 +270,10 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
             }
             // 4. Оборачиваем отправку в защиту от ошибок сети
             try {
-                telegramClient.execute(message); // Почтальон, отправляй!
-            } catch (
-                    Exception e) {
-                e.printStackTrace(); // Если ошибка - выведет в консоль
+                telegramClient.execute(message);
+            } catch (Exception e) {
+                e.printStackTrace();
+                message.setText("Что-то пошло не так...");
             }
         }
     }
