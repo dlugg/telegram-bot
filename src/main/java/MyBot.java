@@ -13,17 +13,18 @@ import java.io.IOException;
 import java.util.*;
 
 public class MyBot implements LongPollingSingleThreadUpdateConsumer {
-    private TelegramClient telegramClient; // инструмент для отправки
-    private Map<Long, State> states = new HashMap<>();        // тут мы сохраним имя юзера
-    private Map<Long, String> usersNames = new HashMap<>();
-    private Map<Long, Integer> numberToGuess = new HashMap<>();
-    private Map<Long, Integer> rpsHumanGameStats = new HashMap<>();
-    private Map<Long, Integer> rpsComputerGameStats = new HashMap<>();
+    private final TelegramClient telegramClient; // инструмент для отправки
+    private final StateService stateService = new StateService();
+    private final Map<Long, String> usersNames = new HashMap<>();
+    private final Map<Long, Integer> numberToGuess = new HashMap<>();
+    private final Map<Long, Integer> rpsHumanGameStats = new HashMap<>();
+    private final Map<Long, Integer> rpsComputerGameStats = new HashMap<>();
     private final TaskService taskService = new TaskService();
     private final String weatherApiKey;
     private final Random rand = new Random();
     private final Map<String, Command> commands = new HashMap<>();
     private final OkHttpClient client = new OkHttpClient();
+    private final Map<State, Command> stateCommands = new HashMap<>();
 
     // Конструктор: при создании бота мы передаем ему токен
     public MyBot(String botToken, String weatherApiKey) {
@@ -38,6 +39,13 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         commands.put("/remind", new RemindCommand(telegramClient));
         commands.put("/btc", new BtcCommand(client));
         commands.put("/quote", new QuoteCommand(client));
+
+        BallCommand ballCommand = new BallCommand(stateService);
+        WeatherCommand weatherCommand = new WeatherCommand(stateService, client, weatherApiKey);
+        commands.put("/weather", weatherCommand);
+        stateCommands.put(State.WAITING_FOR_WEATHER_CITY, weatherCommand);
+        commands.put("/ball", ballCommand);
+        stateCommands.put(State.WAITING_FOR_QUESTION, ballCommand);
     }
 
 
@@ -49,7 +57,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
 
             // 2. Вытаскиваем ID чата (чтобы бот знал, куда отвечать)
             long chatId = update.getMessage().getChatId();
-            State currentState = states.getOrDefault(chatId, State.IDLE);
+            State currentState = stateService.getState(chatId);
             String currentUserName = usersNames.getOrDefault(chatId, "");
             int currentUserWins = rpsHumanGameStats.getOrDefault(chatId, 0);
             int currentUserloses = rpsComputerGameStats.getOrDefault(chatId, 0);
@@ -65,31 +73,24 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                     }
                     message.setText(cmd.execute(chatId, args));
                 } else {
-
                     switch (text) {
                         case "/guess" -> {
                             numberToGuess.put(chatId, rand.nextInt(1, 10 + 1));
-                            states.put(chatId, State.WAITING_FOR_GUESS);
+                            stateService.setState(chatId, State.WAITING_FOR_GUESS);
                             message.setText("Я загадал число от 1 до 10. Отгадывай!");
                         }
-                        case "/ball" -> {
-                            states.put(chatId, State.WAITING_FOR_QUESTION);
-                            message.setText("Задай мне вопрос, на который можно ответить Да или Нет, и я загляну в будущее...");
-                        }
+
                         case "Кто ты?" -> {
                             message.setText("Я просто глупый робот. А как тебя зовут, человек?");
-                            states.put(chatId, State.WAITING_FOR_NAME);
-                        }
-                        case "/weather" -> {
-                            states.put(chatId, State.WAITING_FOR_WEATHER_CITY);
-                            message.setText("Напиши название города на английском (например, London или Moscow):");
+                            stateService.setState(chatId, State.WAITING_FOR_NAME);
+
                         }
                         case "/reverse" -> {
-                            states.put(chatId, State.WAITING_FOR_REVERSE);
+                            stateService.setState(chatId, State.WAITING_FOR_REVERSE);
                             message.setText("Напиши мне любое слово или фразу, и я разверну ее задом наперед!");
                         }
                         case "/rps" -> {
-                            states.put(chatId, State.WAITING_FOR_HUMAN_CHOICE);
+                            stateService.setState(chatId, State.WAITING_FOR_HUMAN_CHOICE);
                             message.setText("Давай сыграем в Камень, Ножницы, Бумага. Выбери свой ход (1-3): \n" +
                                     "1) Камень\n" +
                                     "2) Ножницы\n" +
@@ -99,145 +100,113 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                         case "/stats" -> {
                             message.setText("Твои победы: " + currentUserWins + "| Мои победы: " + currentUserloses);
                         }
-                        case "/clear" -> {
-                            taskService.clearAllTasks(chatId);
-                            message.setText("Задачи удаленны");
-                        }
                         default -> message.setText("Я не понимаю. Напиши /help");
                     }
                 }
-            } else if (currentState == State.WAITING_FOR_NAME) {
-                usersNames.put(chatId, text);
-                message.setText("Тебя действительно зовут " + text + "? Напиши Да или Нет.");
-                states.put(chatId, State.WAITING_FOR_CONFIRM);
-            } else if (currentState == State.WAITING_FOR_CONFIRM) {
-                if (text.equalsIgnoreCase("Да")) {
-                    message.setText("Приятно познакомиться, " + currentUserName + "!");
-                } else {
-                    message.setText("Извини, я перегрелся. Давай заново.");
-                }
-                states.put(chatId, State.IDLE);
-            } else if (currentState==State.WAITING_FOR_GUESS) {
-                try {
-                    if (numberToGuess.get(chatId) > Integer.parseInt(text)) {
-                        message.setText("Мое число больше! ");
-                    } else if (numberToGuess.get(chatId) < Integer.parseInt(text)) {
-                        message.setText("Мое число меньше! ");
+            } else {
+                Command stateCmd = stateCommands.get(currentState);
+                if (stateCmd != null) {
+                    message.setText(stateCmd.execute(chatId, text));
+
+
+                } else if (currentState == State.WAITING_FOR_NAME) {
+                    usersNames.put(chatId, text);
+                    message.setText("Тебя действительно зовут " + text + "? Напиши Да или Нет.");
+                    stateService.setState(chatId, State.WAITING_FOR_CONFIRM);
+                } else if (currentState == State.WAITING_FOR_CONFIRM) {
+                    if (text.equalsIgnoreCase("Да")) {
+                        message.setText("Приятно познакомиться, " + currentUserName + "!");
                     } else {
-                        message.setText("Угадал!");
-
-                        states.put(chatId, State.IDLE);
+                        message.setText("Извини, я перегрелся. Давай заново.");
                     }
-                } catch (NumberFormatException e) {
-                    message.setText("Пожалуйста, введи число цифрами!");
-                }
-            } else if (currentState== State.WAITING_FOR_REVERSE) {
-                char[] letters = text.toCharArray();
-                for (int i = 0; i < letters.length / 2; i++) {
-                    char temp = letters[i];
-                    letters[i] = letters[letters.length - 1 - i];
-                    letters[letters.length - 1 - i] = temp;
-                }
-                String reversedText = new String(letters);
-                message.setText(reversedText);
-                states.put(chatId, State.IDLE);
-            } else if (currentState==  State.WAITING_FOR_HUMAN_CHOICE) {
-                try {
-                    int humanChoice = Integer.parseInt(text);
-                    int computerChoice = rand.nextInt(1, 3 + 1);
-                    switch (humanChoice) {
-                        case (1) -> {
-                            if (computerChoice == 2) {
-                                message.setText("Я выбрал ножницы, Ты победил!");
-                                rpsHumanGameStats.put(chatId, ++currentUserWins);
-                                states.put(chatId, State.IDLE);
-                            } else if (computerChoice == 3) {
-                                message.setText("Я выбрал бумагу, Ты проиграл!");
-                                rpsComputerGameStats.put(chatId, ++currentUserloses);
-                                states.put(chatId, State.IDLE);
-                            } else {
-                                message.setText("Ничья!");
-                                states.put(chatId, State.IDLE);
+                    stateService.setState(chatId, State.IDLE);
+                } else if (currentState == State.WAITING_FOR_GUESS) {
+                    try {
+                        if (numberToGuess.get(chatId) > Integer.parseInt(text)) {
+                            message.setText("Мое число больше! ");
+                        } else if (numberToGuess.get(chatId) < Integer.parseInt(text)) {
+                            message.setText("Мое число меньше! ");
+                        } else {
+                            message.setText("Угадал!");
+
+                            stateService.setState(chatId, State.IDLE);
+                        }
+                    } catch (NumberFormatException e) {
+                        message.setText("Пожалуйста, введи число цифрами!");
+                    }
+                } else if (currentState == State.WAITING_FOR_REVERSE) {
+                    char[] letters = text.toCharArray();
+                    for (int i = 0; i < letters.length / 2; i++) {
+                        char temp = letters[i];
+                        letters[i] = letters[letters.length - 1 - i];
+                        letters[letters.length - 1 - i] = temp;
+                    }
+                    String reversedText = new String(letters);
+                    message.setText(reversedText);
+                    stateService.setState(chatId, State.IDLE);
+                } else if (currentState == State.WAITING_FOR_HUMAN_CHOICE) {
+                    try {
+                        int humanChoice = Integer.parseInt(text);
+                        int computerChoice = rand.nextInt(1, 3 + 1);
+                        switch (humanChoice) {
+                            case (1) -> {
+                                if (computerChoice == 2) {
+                                    message.setText("Я выбрал ножницы, Ты победил!");
+                                    rpsHumanGameStats.put(chatId, ++currentUserWins);
+                                    stateService.setState(chatId, State.IDLE);
+                                } else if (computerChoice == 3) {
+                                    message.setText("Я выбрал бумагу, Ты проиграл!");
+                                    rpsComputerGameStats.put(chatId, ++currentUserloses);
+                                    stateService.setState(chatId, State.IDLE);
+                                } else {
+                                    message.setText("Ничья!");
+                                    stateService.setState(chatId, State.IDLE);
+                                }
+                            }
+                            case (2) -> {
+                                if (computerChoice == 1) {
+                                    message.setText("Я выбрал камень, Ты проиграл!");
+                                    rpsComputerGameStats.put(chatId, ++currentUserloses);
+                                    stateService.setState(chatId, State.IDLE);
+                                } else if (computerChoice == 3) {
+                                    message.setText("Я выбрал бумагу, Ты победил!");
+                                    rpsHumanGameStats.put(chatId, ++currentUserWins);
+                                    stateService.setState(chatId, State.IDLE);
+                                } else {
+                                    message.setText("Ничья!");
+                                    stateService.setState(chatId, State.IDLE);
+                                }
+                            }
+                            case (3) -> {
+                                if (computerChoice == 1) {
+                                    message.setText("Я выбрал камень, Ты победил!");
+                                    rpsHumanGameStats.put(chatId, ++currentUserWins);
+                                    stateService.setState(chatId, State.IDLE);
+                                } else if (computerChoice == 2) {
+                                    message.setText("Я выбрал ножницы, Ты проиграл!");
+                                    rpsComputerGameStats.put(chatId, ++currentUserloses);
+                                    stateService.setState(chatId, State.IDLE);
+                                } else {
+                                    message.setText("Ничья!");
+                                    stateService.setState(chatId, State.IDLE);
+                                }
+                            }
+                            default -> {
+                                message.setText("Я не понимаю введи /help");
+                                stateService.setState(chatId, State.IDLE);
                             }
                         }
-                        case (2) -> {
-                            if (computerChoice == 1) {
-                                message.setText("Я выбрал камень, Ты проиграл!");
-                                rpsComputerGameStats.put(chatId, ++currentUserloses);
-                                states.put(chatId, State.IDLE);
-                            } else if (computerChoice == 3) {
-                                message.setText("Я выбрал бумагу, Ты победил!");
-                                rpsHumanGameStats.put(chatId, ++currentUserWins);
-                                states.put(chatId, State.IDLE);
-                            } else {
-                                message.setText("Ничья!");
-                                states.put(chatId, State.IDLE);
-                            }
-                        }
-                        case (3) -> {
-                            if (computerChoice == 1) {
-                                message.setText("Я выбрал камень, Ты победил!");
-                                rpsHumanGameStats.put(chatId, ++currentUserWins);
-                                states.put(chatId, State.IDLE);
-                            } else if (computerChoice == 2) {
-                                message.setText("Я выбрал ножницы, Ты проиграл!");
-                                rpsComputerGameStats.put(chatId, ++currentUserloses);
-                                states.put(chatId, State.IDLE);
-                            } else {
-                                message.setText("Ничья!");
-                                states.put(chatId, State.IDLE);
-                            }
-                        }
-                        default -> {
-                            message.setText("Я не понимаю введи /help");
-                            states.put(chatId, State.IDLE);
-                        }
+                    } catch (NumberFormatException e) {
+                        message.setText("Пожалуйста, введи только цифру хода (1, 2 или 3)!");
                     }
-                } catch (NumberFormatException e) {
-                    message.setText("Пожалуйста, введи только цифру хода (1, 2 или 3)!");
                 }
-            } else if (currentState== State.WAITING_FOR_WEATHER_CITY) {
-
-                String url = "https://api.openweathermap.org/data/2.5/weather?q=" + text + "&appid=" + weatherApiKey + "&units=metric";
-                Request request = new Request.Builder().url(url).build();
-                try (Response response = client.newCall(request).execute()){
-                    String jsonResponse = response.body().string();
-                    if (response.code() == 200) {
-                        JSONObject obj = new JSONObject(jsonResponse);
-                        JSONObject main = obj.getJSONObject("main");
-                        double temp = main.getDouble("temp");
-                        double feels_like_temp = main.getDouble("feels_like");
-                        String cityName = obj.getString("name");
-                        message.setText("В городе " + cityName + " сейчас " + temp + "°C" +
-                                " Ощущается как " + feels_like_temp);
-
-                    } else if (response.code() == 401) {
-                        message.setText("Мой ключ погоды еще не активировался. Подожди немного!");
-                    } else if (response.code() == 404) {
-                        message.setText("Город не найден. Проверь английское название!");
-                    } else {
-                        message.setText("Что-то пошло не так при запросе погоды...");
-                    }
-
-                } catch (IOException | JSONException e) {
-                    e.printStackTrace();
-                    message.setText("Что-то пошло не так... Попробуй позже.");
-                } finally {
-                    states.put(chatId, State.IDLE);
-                }
-
-
-            } else if (currentState== State.WAITING_FOR_QUESTION) {
-                String[] answers = {"Бесспорно", "Даже не думай", "Мне кажется — да", "Пока не яснo", "Мой ответ — нет"};
-                message.setText(answers[rand.nextInt(0, answers.length)]);
-                states.put(chatId, State.IDLE);
             }
             // 4. Оборачиваем отправку в защиту от ошибок сети
             try {
                 telegramClient.execute(message);
             } catch (Exception e) {
                 e.printStackTrace();
-                message.setText("Что-то пошло не так...");
+
             }
         }
     }
