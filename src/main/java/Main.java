@@ -1,7 +1,7 @@
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args)throws Exception {
         // 1. Положили токен в переменную
         String botToken = System.getenv("BOT_TOKEN");
         if (botToken == null) {
@@ -9,18 +9,16 @@ public class Main {
         }
         final String weatherApiKey = System.getenv("WEATHER_API_KEY");
         if (weatherApiKey == null) {
-            throw new IllegalStateException("WEATHER_API не задан");
+            throw new IllegalStateException("WEATHER_API_KEY не задан");
         }
-        try {
-            TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication();
 
-            // 2. Используем эту переменную для регистрации и для создания бота
+            try (TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication()){
+
             botsApplication.registerBot(botToken, new MyBot(botToken, weatherApiKey));
 
             System.out.println("Бот успешно запущен!");
-            Thread.currentThread().join();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            Thread.currentThread().join();}
+
+
     }
 }
