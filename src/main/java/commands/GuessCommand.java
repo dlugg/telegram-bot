@@ -1,8 +1,14 @@
+package commands;
+
+import model.State;
+import service.GuessService;
+import service.StateService;
+
 public class GuessCommand implements Command {
     private final StateService stateService;
     private final GuessService guessService;
 
-    GuessCommand(StateService stateService, GuessService guessService) {
+    public GuessCommand(StateService stateService, GuessService guessService) {
         this.stateService = stateService;
         this.guessService = guessService;
     }

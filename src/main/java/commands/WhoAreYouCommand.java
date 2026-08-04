@@ -1,8 +1,14 @@
+package commands;
+
+import model.State;
+import service.NameService;
+import service.StateService;
+
 public class WhoAreYouCommand implements Command {
     private final NameService nameService;
     private final StateService stateService;
 
-    WhoAreYouCommand(NameService nameService, StateService stateService) {
+    public WhoAreYouCommand(NameService nameService, StateService stateService) {
         this.nameService = nameService;
         this.stateService = stateService;
     }

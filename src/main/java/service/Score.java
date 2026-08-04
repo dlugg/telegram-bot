@@ -1,3 +1,5 @@
+package service;
+
 public class Score {
     private int wins = 0;
     private int losses = 0;

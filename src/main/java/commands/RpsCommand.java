@@ -1,3 +1,9 @@
+package commands;
+
+import model.State;
+import service.RpsService;
+import service.StateService;
+
 import java.util.Random;
 
 public class RpsCommand implements Command {
@@ -6,7 +12,7 @@ public class RpsCommand implements Command {
     Random rand = new Random();
     private static final String[] MOVES = {"камень", "ножницы", "бумагу"};
 
-    RpsCommand(RpsService rpsService, StateService stateService) {
+    public RpsCommand(RpsService rpsService, StateService stateService) {
         this.rpsService = rpsService;
         this.stateService = stateService;
     }

@@ -1,3 +1,5 @@
+package model;
+
 public enum State {
     IDLE,
     WAITING_FOR_NAME,

@@ -1,8 +1,12 @@
+package commands;
+
+import model.State;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.json.JSONException;
 import org.json.JSONObject;
+import service.StateService;
 
 import java.io.IOException;
 
@@ -11,7 +15,7 @@ public class WeatherCommand implements Command {
     private final OkHttpClient client;
     private final String weatherApiKey;
 
-    WeatherCommand(StateService stateService, OkHttpClient client, String weatherApiKey) {
+    public WeatherCommand(StateService stateService, OkHttpClient client, String weatherApiKey) {
         this.stateService = stateService;
         this.client = client;
         this.weatherApiKey = weatherApiKey;

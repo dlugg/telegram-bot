@@ -1,10 +1,12 @@
+package commands;
+
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 public class RemindCommand implements Command {
     private final TelegramClient telegramClient;
 
-    RemindCommand(TelegramClient telegramClient) {
+    public RemindCommand(TelegramClient telegramClient) {
 
         this.telegramClient = telegramClient;
     }

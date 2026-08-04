@@ -1,7 +1,12 @@
+package commands;
+
+import model.State;
+import service.StateService;
+
 public class ReverseCommand implements Command {
     private final StateService stateService;
 
-    ReverseCommand(StateService stateService) {
+    public ReverseCommand(StateService stateService) {
         this.stateService = stateService;
     }
 

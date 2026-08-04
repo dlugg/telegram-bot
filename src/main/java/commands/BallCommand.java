@@ -1,3 +1,7 @@
+package commands;
+import model.State;
+import service.*;
+
 import java.util.Random;
 
 public class BallCommand implements Command {

@@ -1,3 +1,7 @@
+package commands;
+
+import service.TaskService;
+
 public class DoneCommand implements Command{
     private final TaskService taskService;
     public DoneCommand(TaskService taskService){

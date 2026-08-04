@@ -1,6 +1,10 @@
-public class StatsCommand implements Command{
+package commands;
+
+import service.RpsService;
+
+public class StatsCommand implements Command {
     private final RpsService rpsService;
-    StatsCommand(RpsService rpsService){
+    public StatsCommand(RpsService rpsService){
         this.rpsService = rpsService;
     }
     @Override

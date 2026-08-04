@@ -1,3 +1,5 @@
+package commands;
+import service.*;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -8,7 +10,7 @@ import java.io.IOException;
 
 public class BtcCommand implements Command{
     private final OkHttpClient client;
-    BtcCommand(OkHttpClient client){
+    public BtcCommand(OkHttpClient client){
         this.client = client;
     }
     @Override

@@ -1,3 +1,5 @@
+package bot;
+
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 
 public class Main {

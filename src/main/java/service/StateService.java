@@ -1,3 +1,7 @@
+package service;
+
+import model.State;
+
 import java.util.HashMap;
 import java.util.Map;
 
