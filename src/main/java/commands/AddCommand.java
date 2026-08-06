@@ -17,5 +17,9 @@ public class AddCommand implements Command{
                 return "Задача добавлена";
             }
     }
+    @Override
+    public String description(){
+        return "добавить задачу";
+    }
 
 }

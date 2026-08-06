@@ -57,4 +57,9 @@ public class WeatherCommand implements Command {
             }
         }
     }
+
+    @Override
+    public String description(){
+        return "прогноз погоды";
+    }
 }

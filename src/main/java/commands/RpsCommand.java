@@ -60,5 +60,9 @@ public class RpsCommand implements Command {
 
 
     }
+    @Override
+    public String description(){
+        return "сыграть в камень, ножницы, бумага";
+    }
 }
 

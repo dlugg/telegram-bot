@@ -28,4 +28,8 @@ public class ReverseCommand implements Command {
         }
 
     }
+    @Override
+    public String description(){
+        return "получить текст задом наперёд";
+    }
 }

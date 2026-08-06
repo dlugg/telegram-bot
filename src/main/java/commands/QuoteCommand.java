@@ -39,4 +39,9 @@ public class QuoteCommand implements Command {
             return "Что-то пошло не так... Попробуй позже.";
         }
     }
+
+    @Override
+    public String description(){
+        return "аниме цитата";
+    }
 }

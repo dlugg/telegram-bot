@@ -7,7 +7,11 @@ public class ToDoCommand implements Command {
                 Я могу сделать список задач! 
                 /add  — добавить дело в список.
                 /list — показать все мои дела.
-                /clear — очистить список.""";
+                /clear — очистить список.
+                /done - отметить задачу выполненной""";
     }
-
+    @Override
+    public String description(){
+        return "список команд для задач";
+    }
 }

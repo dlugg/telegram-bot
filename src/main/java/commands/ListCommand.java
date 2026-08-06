@@ -24,4 +24,9 @@ private final TaskService taskService;
         }
         return currentTasksOutput.toString();
     }
+
+    @Override
+    public String description(){
+        return "показать список задач";
+    }
 }

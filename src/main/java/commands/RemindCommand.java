@@ -40,4 +40,8 @@ public class RemindCommand implements Command {
             }
         }
     }
+    @Override
+    public String description(){
+        return "напоминалка";
+    }
 }

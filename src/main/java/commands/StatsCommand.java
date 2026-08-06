@@ -11,4 +11,8 @@ public class StatsCommand implements Command {
     public String execute(long chatId, String args) {
         return rpsService.getStats(chatId);
     }
+    @Override
+    public String description(){
+        return "твои победы/поражения в камень, ножницы, бумага";
+    }
 }

@@ -1,34 +1,23 @@
 package commands;
 
-public class HelpCommand implements Command {
+import java.util.Map;
 
+public class HelpCommand implements Command {
+    private final Map<String, Command> commands;
+    public HelpCommand(Map<String, Command> commandMap){
+        this.commands = commandMap;
+    }
     @Override
     public String execute(long chatId, String args) {
-        return """
-                Что я умею:
-                
-                📝 Задачи
-                /todo — про список задач подробнее
-                /add <текст> — добавить задачу
-                /list — показать список
-                /done <номер> — отметить выполненной
-                /clear — удалить все задачи
-                
-                🎮 Игры
-                /guess — угадай число от 1 до 10
-                /rps — камень-ножницы-бумага
-                /stats — счёт в камень-ножницы-бумага
-                /ball — шар предсказаний, задай вопрос
-                
-                🌤 Полезное
-                /weather — погода в городе
-                /btc — курс биткоина
-                /remind <секунды> <текст> — напомню через N секунд
-                
-                🎲 Разное
-                /reverse — переверну фразу задом наперёд
-                /quote — случайная цитата из аниме
-                
-                Ещё я умею знакомиться — напиши «/who»""";
+        StringBuilder output = new StringBuilder();
+        for (Map.Entry<String, Command> entry : commands.entrySet()){
+            output.append(entry.getKey()).append(" ").append(entry.getValue().description()).append("\n");
+        }
+        return output.toString();
+
+    }
+    @Override
+    public String description(){
+        return "список команд";
     }
 }

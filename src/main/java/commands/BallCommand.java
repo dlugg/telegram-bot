@@ -23,4 +23,8 @@ public class BallCommand implements Command {
             return answers[rand.nextInt(0, answers.length)];
         }
     }
+    @Override
+    public String description(){
+        return "получить ответ на вопрос";
+    }
 }

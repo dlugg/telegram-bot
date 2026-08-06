@@ -37,4 +37,8 @@ public class WhoAreYouCommand implements Command {
         }
 
     }
+    @Override
+    public String description(){
+        return "познакомится";
+    }
 }

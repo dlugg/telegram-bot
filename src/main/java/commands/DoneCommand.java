@@ -21,5 +21,9 @@ public class DoneCommand implements Command{
             }
 
         }
+    @Override
+    public String description(){
+        return "отметить задачу выполненн   ой";
+    }
 
 }

@@ -35,4 +35,8 @@ public class GuessCommand implements Command {
             }
         }
     }
+    @Override
+    public String description(){
+        return "отгадать число";
+    }
 }

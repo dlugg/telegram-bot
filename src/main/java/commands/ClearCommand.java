@@ -12,4 +12,8 @@ public class ClearCommand implements Command{
         taskService.clearAllTasks(chatId);
         return "Задачи удаленны";
     }
+    @Override
+    public String description(){
+        return "очистить весь список задач";
+    }
 }

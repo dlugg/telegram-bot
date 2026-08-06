@@ -27,4 +27,8 @@ public class BtcCommand implements Command{
             return "Мне не удалось достать курс BTC сейчас. Попробуй позже.";
         }
     }
+    @Override
+    public String description(){
+        return "узнать цену биткоина";
+    }
 }

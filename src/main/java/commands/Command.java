@@ -1,6 +1,9 @@
 package commands;
 
-public interface Command{
+public interface Command {
     String execute(long chatId, String args);
 
+    default String description() {
+        return "описание не задано";
+    }
 }
