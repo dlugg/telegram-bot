@@ -13,6 +13,7 @@ import service.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.TreeMap;
 
 public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private final TelegramClient telegramClient; // инструмент для отправки
@@ -23,7 +24,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private final TaskService taskService = new TaskService();
     private final String weatherApiKey;
     private final Random rand = new Random();
-    private final Map<String, Command> commands = new HashMap<>();
+    private final Map<String, Command> commands = new TreeMap<>();
     private final OkHttpClient client = new OkHttpClient();
     private final Map<State, Command> stateCommands = new HashMap<>();
 
@@ -32,7 +33,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         this.telegramClient = new OkHttpTelegramClient(botToken);
         this.weatherApiKey = weatherApiKey;
         commands.put("/start", new StartCommand());
-        commands.put("/help", new HelpCommand());
+        commands.put("/help", new HelpCommand(commands));
         commands.put("/todo", new ToDoCommand());
         commands.put("/list", new ListCommand(taskService));
         commands.put("/add", new AddCommand(taskService));
@@ -60,6 +61,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         commands.put("/who", whoAreYouCommand);
         stateCommands.put(State.WAITING_FOR_NAME, whoAreYouCommand);
         stateCommands.put(State.WAITING_FOR_CONFIRM, whoAreYouCommand);
+
     }
 
 
@@ -101,5 +103,6 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
             }
         }
     }
+
 }
 
