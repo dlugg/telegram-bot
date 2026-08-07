@@ -15,10 +15,7 @@ public class RpsService {
     }
 
     public void addWin(long chatId) {
-        if (!userRpsStats.containsKey(chatId)) {
-            userRpsStats.put(chatId, new Score());
-        }
-        userRpsStats.get(chatId).addWin();
+        userRpsStats.computeIfAbsent(chatId, k -> new Score()).addWin();
     }
 
     public void addLoss(long chatId){
