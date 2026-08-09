@@ -61,6 +61,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         commands.put("/who", whoAreYouCommand);
         stateCommands.put(State.WAITING_FOR_NAME, whoAreYouCommand);
         stateCommands.put(State.WAITING_FOR_CONFIRM, whoAreYouCommand);
+        FindCommand findCommand = new FindCommand(taskService);
+        commands.put("/find", findCommand);
 
     }
 
