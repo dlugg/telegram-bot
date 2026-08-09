@@ -1,6 +1,7 @@
 package commands;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class HelpCommand implements Command {
     private final Map<String, Command> commands;
@@ -9,11 +10,9 @@ public class HelpCommand implements Command {
     }
     @Override
     public String execute(long chatId, String args) {
-        StringBuilder output = new StringBuilder();
-        for (Map.Entry<String, Command> entry : commands.entrySet()){
-            output.append(entry.getKey()).append(" ").append(entry.getValue().description()).append("\n");
-        }
-        return output.toString();
+        return commands.entrySet().stream()
+                .map(e-> e.getKey() + " " + e.getValue().description())
+                .collect(Collectors.joining("\n"));
 
     }
     @Override

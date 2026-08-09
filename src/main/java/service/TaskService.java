@@ -30,7 +30,7 @@ public class TaskService {
         }
     }
 
-    public String clearAllTasks(Long userId){
+    public String clearAllTasks(    Long userId){
         toDoList.remove(userId);
         return "Задачи удалены";
     }
