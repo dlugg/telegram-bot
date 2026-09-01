@@ -83,7 +83,7 @@ public class TaskRepository {
         }
         try (Connection connection = getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
-                     "SELECT task_text FROM tasks WHERE user_id = ?"
+                     "SELECT task_text FROM tasks WHERE user_id = ? ORDER BY id"
              )) {
             preparedStatement.setLong(1, userId);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -94,4 +94,43 @@ public class TaskRepository {
         }
         return userTasks;
     }
+
+    public int clearAllTasks(long chatId) throws SQLException {
+        try (Connection connection = getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM tasks WHERE user_id = (SELECT id FROM users WHERE chat_id = ?)")) {
+            preparedStatement.setLong(1, chatId);
+            return preparedStatement.executeUpdate();
+        }
+
+    }
+
+    public Long findTaskIdByPosition(long chatId, int position) throws SQLException {
+        try (Connection connection = getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement("SELECT id FROM tasks " +
+                     "WHERE user_id = (SELECT id FROM users WHERE chat_id = ? ) ORDER BY id LIMIT 1 OFFSET ?")) {
+            preparedStatement.setLong(1, chatId);
+            preparedStatement.setInt(2, position - 1);
+            try (
+                    ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getLong("id");
+                } else {
+                    return null;
+                }
+            }
+        }
+    }
+
+    public int removeTask(long chatId, int position) throws SQLException {
+        Long taskId = findTaskIdByPosition(chatId, position);
+        if (taskId == null) {
+            return 0;
+        }
+        try (Connection connection = getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM tasks WHERE id = ?")) {
+            preparedStatement.setLong(1, taskId);
+            return preparedStatement.executeUpdate();
+        }
+    }
 }
+

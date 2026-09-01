@@ -1,6 +1,7 @@
 package bot;
 
 import commands.*;
+import exception.DataAccessException;
 import model.State;
 import okhttp3.OkHttpClient;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
@@ -8,6 +9,7 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import repository.TaskRepository;
 import service.*;
 
 import java.util.HashMap;
@@ -21,7 +23,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private final GuessService guessService = new GuessService();
     private final RpsService rpsService = new RpsService();
     private final NameService nameService = new NameService();
-    private final TaskService taskService = new TaskService();
+    private final TaskRepository taskRepository = new TaskRepository();
+    private final TaskService taskService = new TaskService(taskRepository);
     private final String weatherApiKey;
     private final Random rand = new Random();
     private final Map<String, Command> commands = new TreeMap<>();
@@ -37,7 +40,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         commands.put("/todo", new ToDoCommand());
         commands.put("/list", new ListCommand(taskService));
         commands.put("/add", new AddCommand(taskService));
-        commands.put("/done", new DoneCommand(taskService));
+        commands.put("/remove", new RemoveTaskCommand(taskService));
         commands.put("/remind", new RemindCommand(telegramClient));
         commands.put("/btc", new BtcCommand(client));
         commands.put("/quote", new QuoteCommand(client));
@@ -63,40 +66,43 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         stateCommands.put(State.WAITING_FOR_CONFIRM, whoAreYouCommand);
         FindCommand findCommand = new FindCommand(taskService);
         commands.put("/find", findCommand);
-
+        commands.put("/clear", new ClearCommand(taskService));
     }
 
 
     @Override
     public void consume(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            // 1. Вытаскиваем текст, который написал юзер
             String text = update.getMessage().getText();
-
-            // 2. Вытаскиваем ID чата (чтобы бот знал, куда отвечать)
             long chatId = update.getMessage().getChatId();
             State currentState = stateService.getState(chatId);
             SendMessage message = new SendMessage(String.valueOf(chatId), "");
-
-            if (currentState == State.IDLE) {
-                String[] parts = text.split(" ", 2);
-                Command cmd = commands.get(parts[0]);
-                String args = "";
-                if (cmd != null) {
-                    if (parts.length > 1) {
-                        args = parts[1];
+            try {
+                if (currentState == State.IDLE) {
+                    String[] parts = text.split(" ", 2);
+                    Command cmd = commands.get(parts[0]);
+                    String args = "";
+                    if (cmd != null) {
+                        if (parts.length > 1) {
+                            args = parts[1];
+                        }
+                        message.setText(cmd.execute(chatId, args));
+                    } else {
+                        message.setText("Я не понимаю. Напиши /help");
                     }
-                    message.setText(cmd.execute(chatId, args));
                 } else {
-                    message.setText("Я не понимаю. Напиши /help");
+                    Command stateCmd = stateCommands.get(currentState);
+                    if (stateCmd != null) {
+                        message.setText(stateCmd.execute(chatId, text));
+                    }
                 }
-            } else {
-                Command stateCmd = stateCommands.get(currentState);
-                if (stateCmd != null) {
-                    message.setText(stateCmd.execute(chatId, text));
-                }
+            } catch (DataAccessException e) {
+                e.printStackTrace();
+                message.setText("Сервис недоступен, попробуй позже");
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+                message.setText("Что-то пошло не так");
             }
-            // 4. Оборачиваем отправку в защиту от ошибок сети
             try {
                 telegramClient.execute(message);
             } catch (Exception e) {

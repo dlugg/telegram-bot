@@ -49,7 +49,7 @@ public class WeatherCommand implements Command {
                     return ("Что-то пошло не так при запросе погоды...");
                 }
 
-            } catch (IOException | JSONException e) {
+            } catch (IOException  | JSONException e) {
                 e.printStackTrace();
                 return ("Что-то пошло не так... Попробуй позже.");
             } finally {
