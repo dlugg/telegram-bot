@@ -1,16 +1,13 @@
 package repository;
 
+import model.Task;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class TaskRepository {
 
-
-    public static void main(String[] args) throws SQLException {
-        TaskRepository user = new TaskRepository();
-        System.out.println(user.getTasks(11323123));
-    }
 
     private static final String PASSWORD = System.getenv("DATABASE_PASSWORD");
     private static final String URL = "jdbc:postgresql://localhost:5432/javabot";
@@ -75,25 +72,28 @@ public class TaskRepository {
         }
     }
 
-    public List<String> getTasks(long chatId) throws SQLException {
-        List<String> userTasks = new ArrayList<>();
+    public List<Task> getTasks(long chatId) throws SQLException {
+        List<Task> userTasks = new ArrayList<>();
         Long userId = findUserId(chatId);
         if (userId == null) {
             return userTasks;
         }
         try (Connection connection = getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
-                     "SELECT task_text FROM tasks WHERE user_id = ? ORDER BY id"
+                     "SELECT task_text,is_done FROM tasks WHERE user_id = ? ORDER BY id"
              )) {
             preparedStatement.setLong(1, userId);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {
-                    userTasks.add(resultSet.getString("task_text"));
+                    userTasks.add(new Task(resultSet.getString("task_text"), resultSet.getBoolean("is_done")));
+                    }
+
                 }
             }
-        }
         return userTasks;
-    }
+        }
+
+
 
     public int clearAllTasks(long chatId) throws SQLException {
         try (Connection connection = getConnection();
@@ -128,6 +128,18 @@ public class TaskRepository {
         }
         try (Connection connection = getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM tasks WHERE id = ?")) {
+            preparedStatement.setLong(1, taskId);
+            return preparedStatement.executeUpdate();
+        }
+    }
+
+    public int markAsDone(long chatId, int position) throws SQLException {
+        Long taskId = findTaskIdByPosition(chatId, position);
+        if (taskId == null) {
+            return 0;
+        }
+        try (Connection connection = getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement("UPDATE tasks SET is_done = true WHERE id = ?")) {
             preparedStatement.setLong(1, taskId);
             return preparedStatement.executeUpdate();
         }

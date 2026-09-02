@@ -67,6 +67,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         FindCommand findCommand = new FindCommand(taskService);
         commands.put("/find", findCommand);
         commands.put("/clear", new ClearCommand(taskService));
+        commands.put("/done", new MarkAsDoneCommand(taskService));
     }
 
 

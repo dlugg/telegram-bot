@@ -1,6 +1,7 @@
 package service;
 
 import exception.DataAccessException;
+import model.Task;
 import repository.TaskRepository;
 
 import java.sql.SQLException;
@@ -19,7 +20,7 @@ public class TaskService {
 
     }
 
-    public void addTask(Long userId, String text)  {
+    public void addTask(Long userId, String text) {
         try {
             taskRepository.addTask(userId, text);
         } catch (SQLException e) {
@@ -27,8 +28,8 @@ public class TaskService {
         }
     }
 
-    public List<String> getTasks(Long userId) {
-        List<String> userTasks = new ArrayList<>();
+    public List<Task> getTasks(Long userId) {
+        List<Task> userTasks = new ArrayList<>();
         try {
             userTasks = taskRepository.getTasks(userId);
         } catch (SQLException e) {
@@ -38,20 +39,27 @@ public class TaskService {
     }
 
 
-
     public int clearAllTasks(Long userId) {
-        try{
+        try {
             return taskRepository.clearAllTasks(userId);
-        }catch (SQLException e){
-            throw  new DataAccessException("не удалось удалить все задачи", e);
+        } catch (SQLException e) {
+            throw new DataAccessException("не удалось удалить все задачи", e);
         }
     }
 
-    public boolean removeTask(Long userId, int position){
-        try{
+    public boolean removeTask(Long userId, int position) {
+        try {
             return taskRepository.removeTask(userId, position) > 0;
-        }catch(SQLException e){
+        } catch (SQLException e) {
             throw new DataAccessException("не удалось удалить задачу по данной позиции или данного пользователя", e);
+        }
+    }
+
+    public boolean markAsDone(Long userId, int position) {
+        try {
+            return taskRepository.markAsDone(userId, position) > 0;
+        } catch (SQLException e) {
+            throw new DataAccessException("не удалось отметить задачу выполненной по данной позиции", e);
         }
     }
 }
