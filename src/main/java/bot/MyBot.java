@@ -10,6 +10,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 import repository.TaskRepository;
+import repository.UserRepository;
 import service.*;
 
 import java.util.HashMap;
@@ -18,18 +19,21 @@ import java.util.Random;
 import java.util.TreeMap;
 
 public class MyBot implements LongPollingSingleThreadUpdateConsumer {
-    private final TelegramClient telegramClient; // инструмент для отправки
+    private final TelegramClient telegramClient;
+    private final Database database = new Database();
+    private final UserRepository userRepository = new UserRepository(database);
     private final StateService stateService = new StateService();
     private final GuessService guessService = new GuessService();
     private final RpsService rpsService = new RpsService();
-    private final NameService nameService = new NameService();
-    private final TaskRepository taskRepository = new TaskRepository();
+    private final NameService nameService = new NameService(userRepository);
+    private final TaskRepository taskRepository = new TaskRepository(database,userRepository);
     private final TaskService taskService = new TaskService(taskRepository);
     private final String weatherApiKey;
     private final Random rand = new Random();
     private final Map<String, Command> commands = new TreeMap<>();
     private final OkHttpClient client = new OkHttpClient();
     private final Map<State, Command> stateCommands = new HashMap<>();
+
 
     // Конструктор: при создании бота мы передаем ему токен
     public MyBot(String botToken, String weatherApiKey) {
@@ -49,7 +53,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         WeatherCommand weatherCommand = new WeatherCommand(stateService, client, weatherApiKey);
         GuessCommand guessCommand = new GuessCommand(stateService, guessService);
         RpsCommand rpsCommand = new RpsCommand(rpsService, stateService);
-        WhoAreYouCommand whoAreYouCommand = new WhoAreYouCommand(nameService, stateService);
+        WhoAreYouCommand whoAreYouCommand = new WhoAreYouCommand(nameService,stateService);
         commands.put("/weather", weatherCommand);
         stateCommands.put(State.WAITING_FOR_WEATHER_CITY, weatherCommand);
         commands.put("/ball", ballCommand);

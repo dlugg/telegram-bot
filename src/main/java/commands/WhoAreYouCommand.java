@@ -4,6 +4,7 @@ import model.State;
 import service.NameService;
 import service.StateService;
 
+
 public class WhoAreYouCommand implements Command {
     private final NameService nameService;
     private final StateService stateService;
@@ -20,25 +21,30 @@ public class WhoAreYouCommand implements Command {
             stateService.setState(chatId, State.WAITING_FOR_NAME);
             return "Я просто глупый робот. А как тебя зовут, человек?";
         } else if (stateService.getState(chatId) == State.WAITING_FOR_NAME) {
-            nameService.setUserName(chatId, args);
             stateService.setState(chatId, State.WAITING_FOR_CONFIRM);
-            return "Тебя действительно зовут " + args + "? Напиши Да или Нет.";
+            if (nameService.saveUserName(chatId, args)) {
+                return "Тебя действительно зовут " + args + "? Напиши Да или Нет.";
+            } else {
+                return "Что-то пошло не так..";
+            }
 
 
         } else {
             if (args.equalsIgnoreCase("Да")) {
                 stateService.setState(chatId, State.IDLE);
-                return ("Приятно познакомиться, " + nameService.getName(chatId) + "!");
+                return ("Приятно познакомиться, " + nameService.getUserName(chatId) + "!");
             } else {
-                nameService.removeUserName(chatId);
+                nameService.deleteUserName(chatId);
                 stateService.setState(chatId, State.IDLE);
                 return "Извини, я перегрелся. Давай заново. ";
             }
         }
-
     }
+
+
     @Override
-    public String description(){
+    public String description() {
         return "познакомится";
     }
 }
+
