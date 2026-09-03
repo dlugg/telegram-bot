@@ -8,7 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class UserRepository {
-    public final Database database;
+    private final Database database;
 
     public UserRepository(Database database) {
         this.database = database;
@@ -66,7 +66,7 @@ public class UserRepository {
     }
 
     public String getUserName(long chatId) throws SQLException {
-        long userId = findOrCreateUser(chatId);
+        long userId = findUserId(chatId);
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement("SELECT name FROM users WHERE id = ?")) {
             preparedStatement.setLong(1, userId);
