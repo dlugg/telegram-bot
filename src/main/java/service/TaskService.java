@@ -5,14 +5,10 @@ import model.Task;
 import repository.TaskRepository;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class TaskService {
     private final TaskRepository taskRepository;
-    private final Map<Long, List<String>> toDoList = new HashMap<>();
 
     public TaskService(TaskRepository taskRepository) {
 
@@ -29,7 +25,7 @@ public class TaskService {
     }
 
     public List<Task> getTasks(Long userId) {
-        List<Task> userTasks = new ArrayList<>();
+        List<Task> userTasks;
         try {
             userTasks = taskRepository.getTasks(userId);
         } catch (SQLException e) {
