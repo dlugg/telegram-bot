@@ -18,16 +18,24 @@ public class TaskRepository {
     }
 
     public void addTask(long chatId, String text) throws SQLException {
-        long userId = userRepository.findUserId(chatId);
-        try (Connection connection = database.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(
-                     "INSERT INTO tasks(user_id, task_text)  VALUES (?,?)")
-        ) {
-            preparedStatement.setLong(1, userId);
-            preparedStatement.setString(2, text);
-            int inserted = preparedStatement.executeUpdate();
-            if (inserted < 1) {
-                throw new SQLException("INSERT into tasks affected 0 rows for chat_id " + chatId);
+
+        try (Connection connection = database.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                long userId = userRepository.findOrCreateUser(connection, chatId);
+                try (PreparedStatement preparedStatement = connection.prepareStatement(
+                        "INSERT INTO tasks(user_id, task_text)  VALUES (?,?)")) {
+                    preparedStatement.setLong(1, userId);
+                    preparedStatement.setString(2, text);
+                    int inserted = preparedStatement.executeUpdate();
+                    if (inserted < 1) {
+                        throw new SQLException("INSERT into tasks affected 0 rows for chat_id " + chatId);
+                    }
+                    connection.commit();
+                }
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
             }
         }
     }
