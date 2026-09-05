@@ -72,17 +72,21 @@ public class TaskRepository {
     }
 
     public Long findTaskIdByPosition(long chatId, int position) throws SQLException {
-        try (Connection connection = database.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement("SELECT id FROM tasks " +
-                     "WHERE user_id = (SELECT id FROM users WHERE chat_id = ? ) ORDER BY id LIMIT 1 OFFSET ?")) {
-            preparedStatement.setLong(1, chatId);
-            preparedStatement.setInt(2, position - 1);
-            try (
-                    ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getLong("id");
-                } else {
-                    return null;
+        if (position < 1) {
+            return null;
+        } else {
+            try (Connection connection = database.getConnection();
+                 PreparedStatement preparedStatement = connection.prepareStatement("SELECT id FROM tasks " +
+                         "WHERE user_id = (SELECT id FROM users WHERE chat_id = ? ) ORDER BY id LIMIT 1 OFFSET ?")) {
+                preparedStatement.setLong(1, chatId);
+                preparedStatement.setInt(2, position - 1);
+                try (
+                        ResultSet resultSet = preparedStatement.executeQuery()) {
+                    if (resultSet.next()) {
+                        return resultSet.getLong("id");
+                    } else {
+                        return null;
+                    }
                 }
             }
         }
