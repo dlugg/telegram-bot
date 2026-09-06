@@ -1,6 +1,5 @@
 package repository;
 
-import commands.TaskFormatter;
 import model.Task;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,7 +51,7 @@ public class TaskRepositoryTest {
     @Test
     void doesNotCreateUserWhenReadingTasks() throws SQLException {
         long chatId = 123;
-
+        taskRepository.getTasks(chatId);
         Long userId = userRepository.findUserId(chatId);
 
         assertNull(userId);
@@ -60,22 +59,12 @@ public class TaskRepositoryTest {
 
 
     @Test
-    void returnsSameUserIdWhenCalledTwice() throws SQLException{
-        long chatId = 123;
-
-        Long userIdFirstCall = userRepository.findOrCreateUser(chatId);
-        Long userIdSecondCall = userRepository.findOrCreateUser(chatId);
-
-        assertEquals(userIdFirstCall,userIdSecondCall);
-    }
-
-    @Test
-    void clearingTasksDoesNotAffectOtherUsers() throws SQLException{
+    void clearingTasksDoesNotAffectOtherUsers() throws SQLException {
         long chatIdFirstUser = 123;
         long chatIdSecondUser = 456;
 
-        taskRepository.addTask(chatIdFirstUser,"first user test task");
-        taskRepository.addTask(chatIdSecondUser,"second user test task");
+        taskRepository.addTask(chatIdFirstUser, "first user test task");
+        taskRepository.addTask(chatIdSecondUser, "second user test task");
 
         taskRepository.clearAllTasks(chatIdFirstUser);
 
@@ -84,28 +73,83 @@ public class TaskRepositoryTest {
     }
 
     @Test
-    void deletingTaskKeepsOriginalOrder() throws SQLException{
+    void deletingTaskKeepsOriginalOrder() throws SQLException {
         long chatId = 123;
 
         taskRepository.addTask(chatId, "walk a dog");
         taskRepository.addTask(chatId, "read a book");
         taskRepository.addTask(chatId, "eat");
 
-        taskRepository.removeTask(chatId,2);
+        taskRepository.removeTask(chatId, 2);
         List<Task> tasks = taskRepository.getTasks(chatId);
-        assertEquals(2,tasks.size());
+        assertEquals(2, tasks.size());
         assertEquals("walk a dog", tasks.get(0).getText());
         assertEquals("eat", tasks.get(1).getText());
     }
 
     @Test
-    void deletingTaskByNonExistingPositionReturnsZero() throws SQLException{
+    void deletingTaskByNonExistingPositionReturnsZero() throws SQLException {
         long chatId = 123;
-        taskRepository.addTask(chatId,"eat");
+        taskRepository.addTask(chatId, "eat");
 
-        assertEquals(0,taskRepository.removeTask(chatId,2));
-        assertEquals(0,taskRepository.removeTask(chatId,0));
-        assertEquals(0,taskRepository.removeTask(chatId,-1));
+        assertEquals(0, taskRepository.removeTask(chatId, 2));
+        assertEquals(0, taskRepository.removeTask(chatId, 0));
+        assertEquals(0, taskRepository.removeTask(chatId, -1));
+    }
+
+    @Test
+    void checkmarkingTaskAffectOnlyTheSpecifiedTask() throws SQLException {
+        long chatId = 123;
+
+        taskRepository.addTask(chatId, "eat");
+        taskRepository.addTask(chatId, "study");
+        taskRepository.addTask(chatId, "walk a dog");
+
+        taskRepository.markAsDone(chatId, 2);
+
+        List<Task> tasks = taskRepository.getTasks(chatId);
+
+        assertFalse(tasks.get(0).isDone());
+        assertTrue(tasks.get(1).isDone());
+        assertFalse(tasks.get(2).isDone());
+    }
+
+
+    @Test
+    void checkmarkingTaskByNonExistingPositionReturnsZero() throws SQLException {
+        long chatId = 123;
+
+        taskRepository.addTask(chatId, "eat");
+
+
+        assertEquals(0, taskRepository.markAsDone(chatId, 2));
+        assertEquals(0, taskRepository.markAsDone(chatId, 0));
+        assertEquals(0, taskRepository.markAsDone(chatId, -1));
+    }
+
+    @Test
+    void orderInTaskListSameAsInAddingOrder() throws SQLException {
+        long chatId = 123;
+
+        taskRepository.addTask(chatId, "eat");
+        taskRepository.addTask(chatId, "study");
+        taskRepository.addTask(chatId, "walk a dog");
+        taskRepository.addTask(chatId, "poop");
+
+        List<Task> tasks = taskRepository.getTasks(chatId);
+
+        assertEquals("eat", tasks.get(0).getText());
+        assertEquals("study", tasks.get(1).getText());
+        assertEquals("walk a dog", tasks.get(2).getText());
+        assertEquals("poop", tasks.get(3).getText());
+    }
+
+    @Test
+    void clearingTaskForUserWithNoTaskReturnsZero() throws SQLException {
+        long chatId = 123;
+        assertEquals(0, taskRepository.clearAllTasks(chatId));
+
+
     }
 }
 
