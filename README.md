@@ -32,6 +32,7 @@ Tasks are stored in PostgreSQL and survive restarts. The project started as an i
 - Java 21
 - Maven
 - PostgreSQL, accessed through plain JDBC
+- JUnit 5
 - TelegramBots 10.0.0
 - OkHttp and org.json for external APIs
 
@@ -43,7 +44,7 @@ Three layers, each depending only on the one below it.
 
 **Services** hold the business logic and translate `SQLException` into an unchecked `DataAccessException`, so commands never see JDBC types.
 
-**Repositories** own SQL. Every query uses `PreparedStatement` with bound parameters; no string concatenation is used to build SQL.
+**Repositories** own SQL. Every query uses `PreparedStatement` with bound parameters; no string concatenation is used to build SQL. Creating a user together with their first task runs inside a single transaction — either both rows appear or neither does.
 
 Tables:
 
@@ -54,6 +55,7 @@ CREATE TABLE IF NOT EXISTS users
     chat_id BIGINT NOT NULL UNIQUE,
     name    TEXT
 );
+
 CREATE TABLE IF NOT EXISTS tasks
 (
     id         BIGSERIAL PRIMARY KEY,
@@ -66,6 +68,27 @@ CREATE TABLE IF NOT EXISTS tasks
 
 Task numbers shown to the user are positions in an ordered list, not database identifiers — the user never sees internal ids.
 
+## Tests
+
+Unit tests cover formatting logic; integration tests run against a real PostgreSQL database and cover the repository layer: task creation and ordering, position-based removal and completion, boundary cases such as position zero and negative values, isolation between users, and user lookup that must not create rows as a side effect.
+
+Each test starts from a clean state — the tables are truncated before every test method.
+
+Set up the test database once:
+
+```bash
+createdb -U postgres javabot_test
+psql -U postgres -d javabot_test -f src/main/resources/schema.sql
+```
+
+Then run:
+
+```bash
+mvn test
+```
+
+Tests also run as part of `mvn package`, so a failing test stops the build and no jar is produced.
+
 ## Running locally
 
 Requirements: JDK 21, Maven, PostgreSQL.
@@ -77,28 +100,32 @@ createdb -U postgres javabot
 psql -U postgres -d javabot -f src/main/resources/schema.sql
 ```
 
-Set the environment variables:
+Copy `.env.example` to `.env` and fill in your values:
 
 ```bash
-export BOT_TOKEN=your_telegram_token
-export WEATHER_API_KEY=your_openweather_key
-export DATABASE_PASSWORD=your_postgres_password
+cp .env.example .env
+```
+
+```
+BOT_TOKEN=your_telegram_token
+WEATHER_API_KEY=your_openweather_key
+DATABASE_PASSWORD=your_postgres_password
 ```
 
 Build and run:
 
 ```bash
 mvn clean package
-java -jar target/tgBot-1.0-SNAPSHOT.jar
+./run.sh
 ```
 
-No secrets are stored in the repository; the bot reads all of them from the environment and fails fast on startup if they are missing.
+The script loads `.env` and starts the jar. No secrets are stored in the repository — `.env` is git-ignored, and the bot fails fast on startup if a variable is missing.
 
 ## Roadmap
 
-- Unit tests with JUnit 5, starting with the repository layer
-- Transactions for operations that touch two tables
+- Tests for the service and command layers
 - Migration from plain JDBC to Spring Data JPA
+- REST API on top of the same data
 - Docker image with the bot and the database
 - Scheduled reminders that survive a restart
 
