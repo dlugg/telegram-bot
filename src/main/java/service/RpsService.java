@@ -40,22 +40,35 @@ public class RpsService {
 
     public RpsMove humanMove(int humanChoice) {
         RpsMove[] moves = RpsMove.values();
-        return moves[humanChoice - 1];
+        if (humanChoice<1 || humanChoice >3){
+            throw new IllegalArgumentException("ход должен быть от 1 до 3, получено: " + humanChoice);
+        }else{
+            return moves[humanChoice - 1];
+        }
+    }
+
+    public RpsGameResult determineResult(RpsMove human, RpsMove computer) {
+        if (human == computer) {
+            return RpsGameResult.DRAW;
+        } else if (human == RpsMove.ROCK && computer == RpsMove.SCISSORS ||
+                human == RpsMove.SCISSORS && computer == RpsMove.PAPER ||
+                human == RpsMove.PAPER && computer == RpsMove.ROCK) {
+            return RpsGameResult.WIN;
+        } else {
+            return RpsGameResult.LOSE;
+        }
     }
 
     public RpsRoundResult rpsRoundResult(long chatId, int humanChoice) {
         RpsMove computerMove = computerMove();
         RpsMove humanMove = humanMove(humanChoice);
-        if (humanMove == computerMove) {
-            return new RpsRoundResult(computerMove, RpsGameResult.DRAW);
-        } else if (humanMove == RpsMove.ROCK && computerMove == RpsMove.SCISSORS ||
-                humanMove == RpsMove.SCISSORS && computerMove == RpsMove.PAPER ||
-                humanMove == RpsMove.PAPER && computerMove == RpsMove.ROCK) {
+        RpsGameResult gameResult = determineResult(humanMove, computerMove);
+        if (gameResult == RpsGameResult.WIN) {
             addWin(chatId);
-            return new RpsRoundResult(computerMove, RpsGameResult.WIN);
-        } else {
+        } else if (gameResult == RpsGameResult.LOSE) {
             addLoss(chatId);
-            return new RpsRoundResult(computerMove, RpsGameResult.LOSE);
         }
+        return new RpsRoundResult(computerMove, gameResult);
     }
 }
+
