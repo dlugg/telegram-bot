@@ -1,5 +1,6 @@
 package commands;
 
+import model.HumanGuessResult;
 import model.State;
 import service.GuessService;
 import service.StateService;
@@ -21,9 +22,11 @@ public class GuessCommand implements Command {
             return "Я загадал число от 1 до 10. Отгадывай!";
         } else {
             try {
-                if (guessService.getSecretNumber(chatId) > Integer.parseInt(args)) {
+                int humanGuess = Integer.parseInt(args);
+                HumanGuessResult humanGuessResult = guessService.humanGuessResult(chatId,humanGuess);
+                if (humanGuessResult == HumanGuessResult.TOO_LOW) {
                     return "Мое число больше! ";
-                } else if (guessService.getSecretNumber(chatId) < Integer.parseInt(args)) {
+                } else if (humanGuessResult == HumanGuessResult.TOO_HIGH) {
                     return "Мое число меньше! ";
                 } else {
                     stateService.setState(chatId, State.IDLE);
