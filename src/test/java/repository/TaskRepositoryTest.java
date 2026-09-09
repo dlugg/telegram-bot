@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -52,9 +53,8 @@ public class TaskRepositoryTest {
     void doesNotCreateUserWhenReadingTasks() throws SQLException {
         long chatId = 123;
         taskRepository.getTasks(chatId);
-        Long userId = userRepository.findUserId(chatId);
-
-        assertNull(userId);
+        Optional<Long> userId = userRepository.findUserId(chatId);
+        assertTrue(userId.isEmpty());
     }
 
 

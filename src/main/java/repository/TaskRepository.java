@@ -5,6 +5,7 @@ import model.Task;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import service.Database;
 
@@ -42,15 +43,15 @@ public class TaskRepository {
 
     public List<Task> getTasks(long chatId) throws SQLException {
         List<Task> userTasks = new ArrayList<>();
-        Long userId = userRepository.findUserId(chatId);
-        if (userId == null) {
+        Optional<Long> userId = userRepository.findUserId(chatId);
+        if (userId.isEmpty()) {
             return userTasks;
         }
         try (Connection connection = database.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(
                      "SELECT task_text,is_done FROM tasks WHERE user_id = ? ORDER BY id"
              )) {
-            preparedStatement.setLong(1, userId);
+            preparedStatement.setLong(1, userId.get());
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 while (resultSet.next()) {
                     userTasks.add(new Task(resultSet.getString("task_text"), resultSet.getBoolean("is_done")));

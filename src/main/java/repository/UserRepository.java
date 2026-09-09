@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Optional;
 
 public class UserRepository {
     private final Database database;
@@ -14,20 +15,20 @@ public class UserRepository {
         this.database = database;
     }
 
-    public Long findUserId(long chatId) throws SQLException {
+    public Optional<Long> findUserId(long chatId) throws SQLException {
         try (Connection connection = database.getConnection()) {
             return findUserId(connection, chatId);
         }
     }
 
-    public Long findUserId(Connection connection, long chatId) throws SQLException {
+    public Optional<Long> findUserId(Connection connection, long chatId) throws SQLException {
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT id FROM users WHERE chat_id = ?")) {
             preparedStatement.setLong(1, chatId);
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
                 if (resultSet.next()) {
-                    return resultSet.getLong("id");
+                    return Optional.of(resultSet.getLong("id"));
                 } else {
-                    return null;
+                    return Optional.empty();
                 }
             }
         }
@@ -40,9 +41,9 @@ public class UserRepository {
     }
 
     public long findOrCreateUser(Connection connection, long chatId) throws SQLException {
-        Long existing = findUserId(connection, chatId);
-        if (existing != null) {
-            return existing;
+        Optional<Long> existing = findUserId(connection, chatId);
+        if (existing.isPresent()) {
+            return existing.get();
         } else {
             try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO users(chat_id) VALUES (?) RETURNING id")) {
                 preparedStatement.setLong(1, chatId);
@@ -70,13 +71,13 @@ public class UserRepository {
     }
 
     public String getUserName(long chatId) throws SQLException {
-        Long userId = findUserId(chatId);
-        if (userId == null) {
+        Optional<Long> userId = findUserId(chatId);
+        if (userId.isEmpty()) {
             return null;
         } else {
             try (Connection connection = database.getConnection();
                  PreparedStatement preparedStatement = connection.prepareStatement("SELECT name FROM users WHERE id = ?")) {
-                preparedStatement.setLong(1, userId);
+                preparedStatement.setLong(1, userId.get());
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     if (resultSet.next()) {
                         return resultSet.getString("name");
@@ -89,11 +90,11 @@ public class UserRepository {
     }
 
     public int deleteUserName(long chatId) throws SQLException {
-        Long existing = findUserId(chatId);
-        if (existing != null) {
+        Optional<Long> existing = findUserId(chatId);
+        if (existing.isPresent()) {
             try (Connection connection = database.getConnection();
                  PreparedStatement preparedStatement = connection.prepareStatement("UPDATE users SET name = null WHERE id =?")) {
-                preparedStatement.setLong(1, existing);
+                preparedStatement.setLong(1, existing.get());
                 return preparedStatement.executeUpdate();
             }
 

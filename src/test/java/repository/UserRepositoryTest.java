@@ -7,6 +7,7 @@ import service.Database;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -31,9 +32,9 @@ public class UserRepositoryTest {
     }
 
     @Test
-    void forNonExistingChatIdFindUserMethodReturnsNull() throws SQLException {
+    void forNonExistingChatIdFindUserMethodReturnsEmptyOptional() throws SQLException {
         long chatId = 123123;
-        assertNull(userRepository.findUserId(chatId));
+        assertTrue(userRepository.findUserId(chatId).isEmpty());
     }
 
     @Test
@@ -42,7 +43,7 @@ public class UserRepositoryTest {
         long chatId = 123;
 
         userRepository.saveUserName(chatId, "Andrzej");
-        Long userId = userRepository.findUserId(chatId);
+        Optional<Long> userId = userRepository.findUserId(chatId);
 
 
         userRepository.deleteUserName(chatId);
@@ -54,7 +55,7 @@ public class UserRepositoryTest {
         long chatId = 123;
 
         userRepository.saveUserName(chatId, "David");
-        Long userId = userRepository.findUserId(chatId);
+        Optional<Long> userId = userRepository.findUserId(chatId);
 
         userRepository.saveUserName(chatId, "NotDavid");
 
