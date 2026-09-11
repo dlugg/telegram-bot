@@ -21,7 +21,7 @@ public class TaskRepositoryTest {
     @BeforeEach
     void clearTasksAndUsersTables() throws SQLException {
         try (Connection connection = database.getConnection();
-             PreparedStatement statement = connection.prepareStatement("TRUNCATE tasks, users RESTART IDENTITY")) {
+             PreparedStatement statement = connection.prepareStatement("TRUNCATE tasks, users, rps_rounds, guess_games RESTART IDENTITY")) {
             statement.execute();
         }
     }
