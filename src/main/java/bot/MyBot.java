@@ -9,6 +9,7 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import repository.RpsRoundsRepository;
 import repository.TaskRepository;
 import repository.UserRepository;
 import service.*;
@@ -24,7 +25,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private final UserRepository userRepository = new UserRepository(database);
     private final StateService stateService = new StateService();
     private final GuessService guessService = new GuessService();
-    private final RpsService rpsService = new RpsService();
+    private final RpsRoundsRepository rpsRoundsRepository = new RpsRoundsRepository(database,userRepository);
+    private final RpsService rpsService = new RpsService(rpsRoundsRepository);
     private final NameService nameService = new NameService(userRepository);
     private final TaskRepository taskRepository = new TaskRepository(database,userRepository);
     private final TaskService taskService = new TaskService(taskRepository);

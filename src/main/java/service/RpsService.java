@@ -1,34 +1,30 @@
 package service;
 
+import exception.DataAccessException;
 import model.RpsGameResult;
 import model.RpsMove;
 import model.RpsRoundResult;
+import repository.RpsRoundsRepository;
 
-import java.util.HashMap;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.Random;
 
 public class RpsService {
-    private final Map<Long, Score> userRpsStats = new HashMap<>();
+    private final RpsRoundsRepository rpsRoundsRepository;
     private final Random rand = new Random();
 
-    public String getStats(long chatId) {
-        if (userRpsStats.containsKey(chatId)) {
-            return "Победы : " + userRpsStats.get(chatId).getWins() + " | Поражения: " + userRpsStats.get(chatId).getLosses();
-        } else {
-            return "Ты еще не играл.";
-        }
+    public RpsService(RpsRoundsRepository rpsRoundsRepository) {
+        this.rpsRoundsRepository = rpsRoundsRepository;
     }
 
-    public void addWin(long chatId) {
-        userRpsStats.computeIfAbsent(chatId, k -> new Score()).addWin();
-    }
 
-    public void addLoss(long chatId) {
-        if (!userRpsStats.containsKey(chatId)) {
-            userRpsStats.put(chatId, new Score());
+    public Map<RpsGameResult, Integer> getStats(long chatId) {
+        try {
+            return rpsRoundsRepository.getStats(chatId);
+        } catch (SQLException e) {
+            throw new DataAccessException("не удалось получить статистику игры пользователя " + chatId, e);
         }
-        userRpsStats.get(chatId).addLoss();
     }
 
 
@@ -40,9 +36,9 @@ public class RpsService {
 
     public RpsMove humanMove(int humanChoice) {
         RpsMove[] moves = RpsMove.values();
-        if (humanChoice<1 || humanChoice >3){
+        if (humanChoice < 1 || humanChoice > 3) {
             throw new IllegalArgumentException("ход должен быть от 1 до 3, получено: " + humanChoice);
-        }else{
+        } else {
             return moves[humanChoice - 1];
         }
     }
@@ -63,12 +59,14 @@ public class RpsService {
         RpsMove computerMove = computerMove();
         RpsMove humanMove = humanMove(humanChoice);
         RpsGameResult gameResult = determineResult(humanMove, computerMove);
-        if (gameResult == RpsGameResult.WIN) {
-            addWin(chatId);
-        } else if (gameResult == RpsGameResult.LOSE) {
-            addLoss(chatId);
+        try {
+            rpsRoundsRepository.addRound(chatId, gameResult);
+
+        } catch (SQLException e) {
+            throw new DataAccessException("не удалось добавить раунд в базу данных для пользователя " + chatId, e);
         }
         return new RpsRoundResult(computerMove, gameResult);
+
     }
 }
 

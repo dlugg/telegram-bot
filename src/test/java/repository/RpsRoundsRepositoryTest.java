@@ -31,7 +31,7 @@ public class RpsRoundsRepositoryTest {
     void addedRoundAppearsAtStats() throws SQLException {
         long chatId = 123;
         RpsRoundResult rpsRoundResult = new RpsRoundResult(RpsMove.ROCK, RpsGameResult.WIN);
-        rpsRoundsRepository.addRound(chatId, rpsRoundResult);
+        rpsRoundsRepository.addRound(chatId,rpsRoundResult.getRpsGameResult());
         Map<RpsGameResult, Integer> rpsGameResultIntegerMap = rpsRoundsRepository.getStats(chatId);
         assertEquals(1, rpsGameResultIntegerMap.get(RpsGameResult.WIN));
         assertEquals(0, rpsGameResultIntegerMap.get(RpsGameResult.LOSE));
@@ -43,9 +43,9 @@ public class RpsRoundsRepositoryTest {
         long chatId = 123;
         RpsRoundResult rpsRoundResult1 = new RpsRoundResult(RpsMove.ROCK, RpsGameResult.WIN);
         RpsRoundResult rpsRoundResult2 = new RpsRoundResult(RpsMove.ROCK, RpsGameResult.LOSE);
-        rpsRoundsRepository.addRound(chatId, rpsRoundResult1);
-        rpsRoundsRepository.addRound(chatId, rpsRoundResult1);
-        rpsRoundsRepository.addRound(chatId, rpsRoundResult2);
+        rpsRoundsRepository.addRound(chatId, rpsRoundResult1.getRpsGameResult());
+        rpsRoundsRepository.addRound(chatId, rpsRoundResult1.getRpsGameResult());
+        rpsRoundsRepository.addRound(chatId, rpsRoundResult2.getRpsGameResult());
         Map<RpsGameResult, Integer> rpsGameResultIntegerMap = rpsRoundsRepository.getStats(chatId);
         assertEquals(2, rpsGameResultIntegerMap.get(RpsGameResult.WIN));
         assertEquals(1, rpsGameResultIntegerMap.get(RpsGameResult.LOSE));
@@ -59,10 +59,10 @@ public class RpsRoundsRepositoryTest {
         RpsRoundResult rpsRoundResult1 = new RpsRoundResult(RpsMove.ROCK, RpsGameResult.WIN);
         RpsRoundResult rpsRoundResult2 = new RpsRoundResult(RpsMove.ROCK, RpsGameResult.LOSE);
 
-        rpsRoundsRepository.addRound(chatIdFirstUser, rpsRoundResult1);
-        rpsRoundsRepository.addRound(chatIdFirstUser, rpsRoundResult1);
-        rpsRoundsRepository.addRound(chatIdSecondUser, rpsRoundResult1);
-        rpsRoundsRepository.addRound(chatIdSecondUser, rpsRoundResult2);
+        rpsRoundsRepository.addRound(chatIdFirstUser, rpsRoundResult1.getRpsGameResult());
+        rpsRoundsRepository.addRound(chatIdFirstUser, rpsRoundResult1.getRpsGameResult());
+        rpsRoundsRepository.addRound(chatIdSecondUser, rpsRoundResult1.getRpsGameResult());
+        rpsRoundsRepository.addRound(chatIdSecondUser, rpsRoundResult2.getRpsGameResult());
 
         Map<RpsGameResult, Integer> rpsGameResultIntegerMapFirstUser = rpsRoundsRepository.getStats(chatIdFirstUser);
 

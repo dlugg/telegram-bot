@@ -3,11 +3,16 @@ package service;
 import model.RpsGameResult;
 import model.RpsMove;
 import org.junit.jupiter.api.Test;
+import repository.RpsRoundsRepository;
+import repository.UserRepository;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class RpsServiceTest {
-    RpsService rpsService = new RpsService();
+    Database database = new Database("jdbc:postgresql://localhost:5432/javabot_test", "postgres", System.getenv("DATABASE_PASSWORD"));
+    UserRepository userRepository = new UserRepository(database);
+    RpsRoundsRepository rpsRoundsRepository = new RpsRoundsRepository(database,userRepository);
+    RpsService rpsService = new RpsService(rpsRoundsRepository);
 
     @Test
     void sameMovesResultInDraw() {

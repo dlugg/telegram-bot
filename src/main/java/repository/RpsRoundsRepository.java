@@ -19,7 +19,7 @@ public class RpsRoundsRepository {
         this.userRepository = userRepository;
     }
 
-    public void addRound(long chatId, RpsRoundResult rpsRoundResult) throws SQLException {
+    public void addRound(long chatId, RpsGameResult result) throws SQLException {
 
         try (Connection connection = database.getConnection()) {
             connection.setAutoCommit(false);
@@ -28,7 +28,7 @@ public class RpsRoundsRepository {
                 try (PreparedStatement preparedStatement = connection.prepareStatement(
                         "INSERT INTO rps_rounds(user_id, result)  VALUES (?,?)")) {
                     preparedStatement.setLong(1, userId);
-                    preparedStatement.setString(2, rpsRoundResult.getRpsGameResult().name());
+                    preparedStatement.setString(2, result.name());
                     int inserted = preparedStatement.executeUpdate();
                     if (inserted < 1) {
                         throw new SQLException("INSERT game result into rps_rounds affected 0 rows for chat_id " + chatId);
