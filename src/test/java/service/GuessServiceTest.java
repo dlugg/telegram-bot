@@ -29,6 +29,6 @@ public class GuessServiceTest {
 
     @Test
     void notStartedGameThrowsException(){
-        assertThrows(IllegalStateException.class, () -> guessService.getSecretNumber(0));
+        assertThrows(IllegalStateException.class, () -> guessService.getGame(0));
     }
 }

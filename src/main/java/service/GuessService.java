@@ -1,5 +1,6 @@
 package service;
 
+import model.GuessGame;
 import model.HumanGuessResult;
 
 import java.util.HashMap;
@@ -7,24 +8,25 @@ import java.util.Map;
 import java.util.Random;
 
 public class GuessService {
-    private final Map<Long, Integer> secretNumbers = new HashMap<>();
+    private final Map<Long, GuessGame> games = new HashMap<>();
     private final Random rand = new Random();
 
     public void startGame(long chatId) {
-        secretNumbers.put(chatId, rand.nextInt(1, 10 + 1));
+        games.put(chatId, new GuessGame(rand.nextInt(1, 10 + 1)));
 
     }
 
-    public Integer getSecretNumber(long chatId) {
-        if (secretNumbers.get(chatId) == null) {
+    public GuessGame getGame(long chatId) {
+        GuessGame guessGame = games.get(chatId);
+        if (guessGame == null) {
             throw new IllegalStateException("игра еще не начата для пользователя: " + chatId);
         } else {
-            return secretNumbers.get(chatId);
+            return guessGame;
         }
     }
 
     public void endGame(long chatId) {
-        secretNumbers.remove(chatId);
+        games.remove(chatId);
     }
 
     public HumanGuessResult compare(int secret, int guess) {
@@ -38,7 +40,9 @@ public class GuessService {
     }
 
     public HumanGuessResult humanGuessResult(long chatId, int guess) {
-        int secret = getSecretNumber(chatId);
+        GuessGame guessGame = getGame(chatId);
+        int secret = guessGame.getSecretNumber();
+        guessGame.increaseAttempts();
         return compare(secret, guess);
     }
 
