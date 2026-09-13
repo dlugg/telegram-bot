@@ -2,9 +2,9 @@ package model;
 
 public enum RpsGameResult {
 
-    WIN("победа"),
-    LOSE("поражение"),
-    DRAW("ничья");
+    WIN("побед"),
+    LOSE("поражений"),
+    DRAW("ничьих");
     private final String title;
 
     RpsGameResult(String title){
