@@ -9,6 +9,7 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import repository.GuessGamesRepository;
 import repository.RpsRoundsRepository;
 import repository.TaskRepository;
 import repository.UserRepository;
@@ -24,7 +25,8 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private final Database database = new Database();
     private final UserRepository userRepository = new UserRepository(database);
     private final StateService stateService = new StateService();
-    private final GuessService guessService = new GuessService();
+    private final GuessGamesRepository guessGamesRepository = new GuessGamesRepository(database,userRepository);
+    private final GuessService guessService = new GuessService(guessGamesRepository);
     private final RpsRoundsRepository rpsRoundsRepository = new RpsRoundsRepository(database,userRepository);
     private final RpsService rpsService = new RpsService(rpsRoundsRepository);
     private final NameService nameService = new NameService(userRepository);
@@ -66,7 +68,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         stateCommands.put(State.WAITING_FOR_GUESS, guessCommand);
         commands.put("/rps", rpsCommand);
         stateCommands.put(State.WAITING_FOR_HUMAN_CHOICE, rpsCommand);
-        commands.put("/stats", new StatsCommand(rpsService));
+        commands.put("/stats", new StatsCommand(rpsService,guessService));
         commands.put("/who", whoAreYouCommand);
         stateCommands.put(State.WAITING_FOR_NAME, whoAreYouCommand);
         stateCommands.put(State.WAITING_FOR_CONFIRM, whoAreYouCommand);

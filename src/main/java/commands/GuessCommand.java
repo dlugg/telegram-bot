@@ -30,7 +30,6 @@ public class GuessCommand implements Command {
                     return "Мое число меньше! ";
                 } else {
                     stateService.setState(chatId, State.IDLE);
-                    guessService.endGame(chatId);
                     return "Угадал!";
                 }
             } catch (NumberFormatException e) {
