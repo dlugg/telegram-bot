@@ -1,0 +1,5 @@
+.env
+run.sh
+.git/
+.idea/
+
