@@ -4,6 +4,8 @@ import commands.*;
 import exception.DataAccessException;
 import model.State;
 import okhttp3.OkHttpClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -21,16 +23,17 @@ import java.util.Random;
 import java.util.TreeMap;
 
 public class MyBot implements LongPollingSingleThreadUpdateConsumer {
+    private static final Logger log = LoggerFactory.getLogger(MyBot.class);
     private final TelegramClient telegramClient;
     private final Database database = new Database();
     private final UserRepository userRepository = new UserRepository(database);
     private final StateService stateService = new StateService();
-    private final GuessGamesRepository guessGamesRepository = new GuessGamesRepository(database,userRepository);
+    private final GuessGamesRepository guessGamesRepository = new GuessGamesRepository(database, userRepository);
     private final GuessService guessService = new GuessService(guessGamesRepository);
-    private final RpsRoundsRepository rpsRoundsRepository = new RpsRoundsRepository(database,userRepository);
+    private final RpsRoundsRepository rpsRoundsRepository = new RpsRoundsRepository(database, userRepository);
     private final RpsService rpsService = new RpsService(rpsRoundsRepository);
     private final NameService nameService = new NameService(userRepository);
-    private final TaskRepository taskRepository = new TaskRepository(database,userRepository);
+    private final TaskRepository taskRepository = new TaskRepository(database, userRepository);
     private final TaskService taskService = new TaskService(taskRepository);
     private final String weatherApiKey;
     private final Random rand = new Random();
@@ -57,7 +60,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         WeatherCommand weatherCommand = new WeatherCommand(stateService, client, weatherApiKey);
         GuessCommand guessCommand = new GuessCommand(stateService, guessService);
         RpsCommand rpsCommand = new RpsCommand(rpsService, stateService);
-        WhoAreYouCommand whoAreYouCommand = new WhoAreYouCommand(nameService,stateService);
+        WhoAreYouCommand whoAreYouCommand = new WhoAreYouCommand(nameService, stateService);
         commands.put("/weather", weatherCommand);
         stateCommands.put(State.WAITING_FOR_WEATHER_CITY, weatherCommand);
         commands.put("/ball", ballCommand);
@@ -68,7 +71,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         stateCommands.put(State.WAITING_FOR_GUESS, guessCommand);
         commands.put("/rps", rpsCommand);
         stateCommands.put(State.WAITING_FOR_HUMAN_CHOICE, rpsCommand);
-        commands.put("/stats", new StatsCommand(rpsService,guessService));
+        commands.put("/stats", new StatsCommand(rpsService, guessService));
         commands.put("/who", whoAreYouCommand);
         stateCommands.put(State.WAITING_FOR_NAME, whoAreYouCommand);
         stateCommands.put(State.WAITING_FOR_CONFIRM, whoAreYouCommand);
@@ -82,6 +85,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     @Override
     public void consume(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
+
             String text = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
             State currentState = stateService.getState(chatId);
@@ -89,9 +93,11 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
             try {
                 if (currentState == State.IDLE) {
                     String[] parts = text.split(" ", 2);
-                    Command cmd = commands.get(parts[0]);
+                    String command = parts[0];
+                    Command cmd = commands.get(command);
                     String args = "";
                     if (cmd != null) {
+                        log.info("command {} sent by  {}", command, chatId);
                         if (parts.length > 1) {
                             args = parts[1];
                         }
@@ -106,17 +112,16 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                     }
                 }
             } catch (DataAccessException e) {
-                e.printStackTrace();
+                log.error("база недоступна, пользователь {}, состояние {}", chatId,currentState, e);
                 message.setText("Сервис недоступен, попробуй позже");
             } catch (RuntimeException e) {
-                e.printStackTrace();
+                log.error("не удалось выполнить команду от {} в состоянии {}", chatId,currentState,e);
                 message.setText("Что-то пошло не так");
             }
             try {
                 telegramClient.execute(message);
             } catch (Exception e) {
-                e.printStackTrace();
-
+                log.error("не удалось отправить сообщение", e);
             }
         }
     }
