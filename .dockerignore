@@ -2,4 +2,5 @@
 run.sh
 .git/
 .idea/
+target/
 
