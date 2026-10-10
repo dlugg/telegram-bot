@@ -4,7 +4,7 @@ services:
         environment:
             POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
             POSTGRES_DB: javabot
-            JAVA_TOOL_OPTIONS: -Xmx256m
+
         volumes:
             - botdata:/var/lib/postgresql/data
             - ./src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
@@ -17,6 +17,7 @@ services:
         env_file: .env
         environment:
             DATABASE_URL: jdbc:postgresql://db:5432/javabot
+            JAVA_TOOL_OPTIONS: -Xmx256m
         depends_on:
             - db
         restart: unless-stopped
